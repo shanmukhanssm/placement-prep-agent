@@ -6,7 +6,7 @@ values sourced from graph-design.md Run Limits and prompt-registry.md Model Poli
 
 import logging
 import os
-from typing import Any, Final, TypeVar, cast
+from typing import Any, Final, TypeVar
 
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
@@ -68,6 +68,15 @@ REPORT_CARD_PATH: Final[str] = "data/report-card.json"
 HISTORY_DIR: Final[str] = "data/history"
 
 
+# --- Structured output (provider-specific; verified 2026-09-14) ---
+# ollama.com IGNORES response_format json_schema/json_object (returns markdown free text),
+# but honors OpenAI tool-calling. with_structured_output(method="function_calling") is
+# NOT used directly: its parser rejects tool calls whose NAME differs from the schema
+# class (gpt-oss sometimes calls the tool by the role name → OUTPUT_PARSING_FAILURE).
+# Instead we bind_tools ourselves and accept the FIRST tool call whatever its name,
+# falling back to JSON-in-content parsing. Single seam = call_structured below.
+
+
 def get_llm(role: str) -> ChatOpenAI:
     """Single client factory — model strings and temperatures never appear in node code."""
     return ChatOpenAI(
@@ -87,6 +96,35 @@ _RETRY_SUFFIX = (
 ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
+def _extract_structured(message: Any, schema: type[ModelT]) -> ModelT | None:
+    """Validate the model's answer into ``schema`` — lenient on shape, strict on content.
+
+    Priority: an already-validated instance (test stubs) → first tool call (ANY tool
+    name — providers rename freely) → JSON in content (code-fence tolerant). Returns
+    None when neither yields a valid instance; the caller owns the retry.
+    """
+    if isinstance(message, schema):  # stub seam returns validated instances directly
+        return message
+    tool_calls = getattr(message, "tool_calls", None) or []
+    if tool_calls:
+        args = tool_calls[0].get("args") or {}
+        try:
+            return schema.model_validate(args)
+        except Exception as exc:  # noqa: BLE001 — fall through to content parsing
+            logger.warning("[llm] tool-call args failed schema validation: %s", exc)
+    content = getattr(message, "content", "")
+    if isinstance(content, str) and content.strip():
+        text = content.strip()
+        start, end = text.find("{"), text.rfind("}")
+        if start != -1 and end > start:
+            text = text[start : end + 1]
+        try:
+            return schema.model_validate_json(text)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[llm] content JSON failed schema validation: %s", exc)
+    return None
+
+
 def call_structured(role: str, schema: type[ModelT], prompt: str) -> ModelT | None:
     """One structured LLM call with exactly ONE validation/retry pass (library-docs.md).
 
@@ -95,18 +133,25 @@ def call_structured(role: str, schema: type[ModelT], prompt: str) -> ModelT | No
     failure rows); this helper never raises. Keeps the ≤3 LLM calls/turn budget visible
     at one call site per node.
     """
-    structured: Any | None = None  # the with_structured_output chain (untyped upstream)
+    llm: Any | None = None  # bind_tools chain (untyped upstream)
     try:
-        structured = get_llm(role).with_structured_output(schema)
-        result = structured.invoke(prompt)
+        # tool_choice="required" — verified against ollama.com 2026-09-14: without it
+        # gpt-oss frequently answers in prose instead of calling the tool
+        llm = get_llm(role).bind_tools([schema], tool_choice="required")
+        parsed = _extract_structured(llm.invoke(prompt), schema)
     except Exception as exc:  # noqa: BLE001 — any failure gets the single retry below
         logger.warning("[llm:%s] structured call failed (%s) — one retry", role, exc)
+        parsed = None
     else:
-        return cast(ModelT, result)
+        if parsed is not None:
+            return parsed
     try:
-        if structured is None:  # client construction itself failed — rebuild for the retry
-            structured = get_llm(role).with_structured_output(schema)
-        return cast(ModelT, structured.invoke(prompt + _RETRY_SUFFIX))
+        if llm is None:  # client construction itself failed — rebuild for the retry
+            llm = get_llm(role).bind_tools([schema], tool_choice="required")
+        parsed = _extract_structured(llm.invoke(prompt + _RETRY_SUFFIX), schema)
     except Exception as exc:  # noqa: BLE001
         logger.error("[llm:%s] structured call failed twice — node falls back: %s", role, exc)
         return None
+    if parsed is None:
+        logger.error("[llm:%s] structured call failed twice — node falls back", role)
+    return parsed

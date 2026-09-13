@@ -12,6 +12,7 @@ behavior-comm.md §5, behavior-dsa.md §5, behavior-core.md §4/§7 — added to
 graph-design.md sub-state listing in the same commit as this file.
 """
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -29,6 +30,22 @@ class ProblemSpec(BaseModel):
     statement_brief: str = ""  # ≤120-char gist for the wrap's QuestionRecord.question
     optimized_approach: str  # reference technique; revealed only after pass or give-up
     edge_cases: list[str]
+
+    @field_validator("edge_cases", mode="before")
+    @classmethod
+    def _flatten_edge_cases(cls, value: object) -> object:
+        """LLMs sometimes emit {description,input,output} objects — flatten to strings."""
+        if isinstance(value, list):
+            flat: list[str] = []
+            for item in value:
+                if isinstance(item, dict):
+                    flat.append(
+                        "; ".join(f"{k}: {v}" for k, v in item.items() if v not in (None, ""))
+                    )
+                else:
+                    flat.append(str(item))
+            return flat
+        return value
 
 
 class _TurnState(BaseModel):
@@ -103,6 +120,19 @@ class AttemptVerdict(BaseModel):
     is_attempt: bool = True  # False → meta/clarification; never consumes attempt_count
     mechanism: str = ""  # the proposed mechanism in ≤12 words (wrap verdict input)
 
+    @field_validator("faults", mode="before")
+    @classmethod
+    def _strip_fault_explanations(cls, faults: object) -> object:
+        """Models append explanations to taxonomy names ('incorrect-algorithm – ...') —
+        keep only the name token so the taxonomy check below can pass."""
+        if isinstance(faults, list):
+            cleaned: list[str] = []
+            for f in faults:
+                name = re.split(r"\s+[–—-]\s+", str(f), maxsplit=1)[0].strip()
+                cleaned.append(name)
+            return cleaned
+        return faults
+
     @field_validator("faults")
     @classmethod
     def _taxonomy_only(cls, faults: list[str]) -> list[str]:
@@ -124,6 +154,24 @@ class InterviewQuestion(BaseModel):
 
     question: str
     kind: QuestionKind
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _coerce_kind(cls, kind: object) -> object:
+        """Models invent kinds ('question', 'closing_reverse') — map into the arc set."""
+        text = str(kind).strip().lower()
+        if "clos" in text:
+            return "closing"
+        if text in (
+            "intro",
+            "behavioral",
+            "situational",
+            "strengths_weaknesses",
+            "curveball",
+            "closing",
+        ):
+            return text
+        return "behavioral"  # the generic arc bucket for unrecognized kinds
 
 
 class AnswerScore(BaseModel):

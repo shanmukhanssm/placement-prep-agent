@@ -12,6 +12,8 @@ Collected so far: {collected_summary}. The next missing field is: {missing_field
 The fixed field order is: name -> degree/branch -> grad year -> target roles ->
 weak areas -> core subject.
 
+User's message this turn: {user_message}
+
 Rules:
 - ONE focus per turn. If the user's message answers the missing field, confirm it
   briefly, then ask the next missing field (you know the fixed order).

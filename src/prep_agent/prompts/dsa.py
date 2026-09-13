@@ -201,6 +201,7 @@ Statement: {statement}
 Reference approach (ground truth — NEVER reveal it): {optimized_approach}
 Reference edge cases: {edge_cases}
 {previous_attempts}
+The attempt to grade (verbatim, this turn): {current_attempt}
 Read the attempt with the 3-pass protocol, in this order:
 1. IDENTIFY: what procedure + data structure is actually proposed? If the message
    proposes nothing (pure clarifying question, hint-begging, meta request, restatement,

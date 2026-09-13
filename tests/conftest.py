@@ -33,9 +33,11 @@ VALID_PROFILE: dict[str, object] = {
 class StubLLM:
     """Offline stand-in for ChatOpenAI — canned outputs popped per call.
 
-    Structured calls go through ``with_structured_output(schema).invoke(prompt)`` and
-    are validated against the REAL pydantic schema (so schema drift fails tests).
-    A queued ``Exception`` instance raises — the canned judge-failure path.
+    Structured calls go through ``bind_tools([schema]).invoke(prompt)`` (the
+    ``config.call_structured`` seam) and are validated against the REAL pydantic
+    schema (so schema drift fails tests); the validated instance flows through
+    ``_extract_structured``'s isinstance passthrough. A queued ``Exception``
+    instance raises — the canned judge-failure path.
     """
 
     def __init__(self, queue: list[object], role: str) -> None:
@@ -43,10 +45,11 @@ class StubLLM:
         self.role = role
         self.prompts: list[str] = []
 
-    def with_structured_output(self, schema: type) -> object:  # noqa: ANN001
+    def bind_tools(self, tools: list[type], **kwargs: object) -> object:  # noqa: ANN001
         llm = self
+        schema = tools[0]
 
-        class _Structured:
+        class _Bound:
             def invoke(self, prompt: str) -> object:
                 llm.prompts.append(prompt)
                 if not llm.queue:
@@ -56,7 +59,7 @@ class StubLLM:
                     raise out
                 return schema.model_validate(out)
 
-        return _Structured()
+        return _Bound()
 
     def invoke(self, prompt: str) -> object:  # plain-text calls (comm wrap summary)
         self.prompts.append(prompt)

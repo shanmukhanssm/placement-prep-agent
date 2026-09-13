@@ -62,7 +62,7 @@ Return ONLY the structured output.
 | Model / temp / max tokens | placeholder / 0.3 / 300 |
 | Structured output | `OnboardingTurn {message: str, extracted: dict[str, str]}` — **Phase 2.1 schema delta (same commit)**: `extracted_value: str|None` widened to `extracted` (field→value dict) so early answers to LATER fields are accepted and stored in one turn (graph-design.md onboarding spec); code normalizes/validates every value and drops invalid ones |
 | Consumed state | `user_message`, `session_data.onboarding.collected`, next-missing-field name (injected by code) |
-| Version history | v1 — initial intake · v1 (Phase 2.1 authored in code with the `extracted` schema delta noted above) |
+| Version history | v1 — initial intake · v1 (Phase 2.1 authored in code with the `extracted` schema delta noted above) · v1 (live-test fix 2026-09-14: `user_message` is now injected into the prompt per the Consumed-state contract — the collector previously could not see the student's reply and re-asked the same field forever) |
 
 ```
 You are warmly onboarding a new student onto their placement-prep coach.
@@ -202,7 +202,7 @@ Write the self-contained problem statement for the ONE DSA problem already chose
 | Model / temp / max tokens | placeholder / 0.2 / 450 |
 | Structured output | `AttemptVerdict {optimality_pct: 0-100, faults: list[str] (taxonomy-validated, ≤4), feedback, is_attempt: bool = True, mechanism: str}` — **Phase 2.3 deltas (same commit)**: `pass` is DERIVED in code (`optimality_pct >= 80` ONLY — never LLM-emitted); `faults` validated against the behavior-dsa §3.3 taxonomy by name (free-text labels are a validation failure); `is_attempt=False` marks non-attempts (clarifying questions, hint-begging, meta) which never consume `attempt_count`; `mechanism` (≤12 words) feeds the wrap verdict line. Hint level 1/2 injected from `attempt_count` (behavior-dsa §4.1). Failure path locked: one retry → conservative `optimality_pct=0` + "I couldn't score that — explain it differently." |
 | Consumed state | problem (`statement`, `optimized_approach`, `edge_cases`), current attempt text, previous attempt (repeated-attempt detection), `attempt_count` (hint level) |
-| Version history | v1 — initial intake · v1-rev (Phase 2.3: taxonomy validation, is_attempt, mechanism, pass derived in code) |
+| Version history | v1 — initial intake · v1-rev (Phase 2.3: taxonomy validation, is_attempt, mechanism, pass derived in code) · v1 (live-test fix 2026-09-14: `current_attempt` is now injected verbatim into the prompt per the Consumed-state contract — the evaluator previously graded without seeing this turn's attempt) |
 
 ---
 

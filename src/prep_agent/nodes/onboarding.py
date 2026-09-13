@@ -129,9 +129,12 @@ def onboarding(state: MainState) -> dict[str, Any]:
         missing = _next_missing(collected)
         assert missing is not None  # complete is False ⇒ exactly one missing field exists
         summary = json.dumps(collected, ensure_ascii=False) if collected else "{} (nothing yet)"
+        # registry contract: consumed state includes user_message (injected by code) —
+        # without it the collector cannot see what the student just said
         prompt = ONBOARDING_COLLECTOR_V1.format(
             collected_summary=summary,
             missing_field=missing,
+            user_message=state.user_message.strip() or "(empty)",
         )
         turn = call_structured("onboarding_collector", OnboardingTurn, prompt)
         if turn is not None:

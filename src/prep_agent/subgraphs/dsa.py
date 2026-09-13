@@ -241,6 +241,7 @@ def evaluator(state: DsaState) -> dict[str, Any]:
         optimized_approach=problem.optimized_approach,
         edge_cases="; ".join(problem.edge_cases),
         previous_attempts=prev,
+        current_attempt=state.user_message.strip() or "(empty)",
         hint_level=hint_level,
         next_no=min(attempt_no + 1, DSA_MAX_ATTEMPTS),
     )
