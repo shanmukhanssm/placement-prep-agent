@@ -174,7 +174,7 @@ def compute_trend(scores: list[float]) -> TrendVerdict:
 | Ordering | Scores sorted by record date before windowing, never by insertion order |
 
 **Consumers:** `read_report_card`, `save_session_results`.
-**Eval:** property tests — improving series → `improving`, declining → `declining`, noisy-flat → `flat`, <3 scores → `not_enough_data`, order-independence (shuffled input, same verdict). Current: UNTESTED.
+**Eval:** property tests — improving series → `improving`, declining → `declining`, noisy-flat → `flat`, <3 scores → `not_enough_data`, order-independence (shuffled input, same verdict). Current: PASS (v1).
 
 ---
 

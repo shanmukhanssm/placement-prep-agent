@@ -1,0 +1,16 @@
+# secrets / environment
+.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# runtime state (checkpointer per architecture.md)
+*.sqlite
+
+# user data — system of record, never committed (tool-registry.md data files)
+data/
+
+# generated artifact (render_report_card)
+REPORT_CARD.html

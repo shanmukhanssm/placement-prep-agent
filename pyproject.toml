@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prep-agent"
+version = "0.1.0"
+description = "placement-prep-agent — turn-based LangGraph placement-prep coach (single-user CLI)"
+requires-python = ">=3.11"
+# Closed dependency list (code-standards.md). Version pins land with Phase 0
+# per library-docs.md version policy ("pin at Phase 0").
+dependencies = [
+    "langgraph",
+    "langchain-openai",
+    "langgraph-checkpoint-sqlite",
+    "pydantic>=2",
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+markers = [
+    "unit: Layer 1 — tool cases, compute_trend properties, stubbed routing edges (eval-plan.md)",
+    "eval: Layers 2–5 eval scripts",
+    "e2e: golden end-to-end cases",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
