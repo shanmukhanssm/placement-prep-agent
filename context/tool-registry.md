@@ -18,6 +18,8 @@
 
 Pure function (not an LLM tool, unit-tested directly): `compute_trend(records) -> TrendVerdict` in `src/prep_agent/tools/progress_math.py`.
 
+**Phase 0 stub note (2026-09-13) — superseded:** during Phase 0 the five tools existed as zero-I/O stubs in the skeleton so the graph could run e2e before the real tools landed. Feature 1.1 (Phase 1) has since replaced every stub with the real implementation per the contracts below; all eval statuses are now `PASS (v1)`. The stubs' frozen signatures/return shapes matched the real tools exactly — no node code changed in the swap.
+
 This list is closed. No other tool may be called from any node. Adding a tool: register here → update graph-design.md node spec → build → eval → set status.
 
 **Data files (system of record):**

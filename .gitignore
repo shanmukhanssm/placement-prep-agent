@@ -1,16 +1,24 @@
-# secrets / environment
+# secrets & runtime data
 .env
+data/
+*.sqlite
+*.sqlite3
+REPORT_CARD.html
 
 # python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
 .venv/
+build/
+dist/
 
-# runtime state (checkpointer per architecture.md)
-*.sqlite
+# tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# user data — system of record, never committed (tool-registry.md data files)
-data/
-
-# generated artifact (render_report_card)
-REPORT_CARD.html
+# editors
+.idea/
+.vscode/
+.DS_Store

@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase:** Phase 1 — Tools (1.1 complete; Phase 0 skeleton being built in a parallel session)
-**Last completed:** 1.1 Real Tools + Trend Math (all 6 registry rows PASS v1)
-**Next:** Phase 2.1 Real Onboarding — after Phase 0 lands and Phase 0→1 Layer-1 (stubbed harness) + Phase 1→2 Layer-1 (real tools) gates are both recorded
+**Phase:** Phases 0 + 1 COMPLETE (both gates passed; parallel sessions merged 2026-09-13)
+**Last completed:** 1.1 Real Tools + Trend Math — real tools now live under the Phase 0 graph skeleton
+**Next:** Phase 2.1 Real Onboarding (behavior specs: `context/behavior-*.md` — see Decisions)
 
 ---
 
@@ -16,8 +16,8 @@
 
 ### Phase 0 — Skeleton
 
-- [ ] 0.1 Main-Graph Skeleton (Stubs)
-- [ ] 0.2 Subgraph Skeletons (Stubs)
+- [x] 0.1 Main-Graph Skeleton (Stubs)
+- [x] 0.2 Subgraph Skeletons (Stubs)
 
 ### Phase 1 — Tools
 
@@ -67,6 +67,13 @@
 
 | Date | Feature | Layer (static/unit/integration/e2e/eval) | Result | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | static | PASS | `ruff check .` clean · `mypy --strict src` clean (17 files) |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | e2e | PASS | `tests/e2e/test_skeleton_e2e.py` — 6-turn scripted conversation (onboarding→dsa start→attempt→give-up wrap→progress→exit) green; all route families exercised incl. session_active pin; 2 passed |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | e2e (manual) | PASS | `python -m prep_agent` on the scripted turns — every turn printed a reply; graph loads with all 10 nodes for Studio (`prep_agent.graph:graph`) |
+| 2026-09-13 | 0.2 Subgraph Skeletons | static | PASS | `ruff check .` clean · `mypy --strict src` clean (18 files) |
+| 2026-09-13 | 0.2 Subgraph Skeletons | unit | PASS | `tests/subgraphs/` — dsa: 3 termination paths (pass 85 / give-up / forced stop at 3) + selector; comm & core: wrap at 8 + hard stop at 10; boundary wrapper preserves sibling namespaces and rejects unknown keys (extra=forbid); 13 passed total |
+| 2026-09-13 | 0.2 Subgraph Skeletons | e2e (regression) | PASS | 0.1 skeleton e2e + CLI scripted run unchanged through the subgraph swap |
+| 2026-09-13 | Phase 0↔1 merge | full suite | PASS | parallel sessions reconciled: real tools replace stubs under the live graph — pytest (unit+subgraphs+e2e) green · ruff clean · mypy --strict clean (see Notes, merge record) |
 | 2026-09-13 | 1.1 compute_trend | static + unit (properties) | PASS | ruff clean · mypy --strict src clean · 6/6 trend properties (5 pure in `tests/unit/test_progress_math.py`, duplicate-id property on the save path) |
 | 2026-09-13 | 1.1 read_report_card | static + unit | PASS | 4/4 registry cases (missing/healthy/corrupt/<3) — zero raises, corrupt renamed `.corrupt-{ts}` |
 | 2026-09-13 | 1.1 write_profile | static + unit | PASS | 3/3 (round-trip/invalid→`ToolError("invalid_profile")`/identical overwrite no-op) |
@@ -81,7 +88,7 @@
 
 | Phase gate | Result | Date | Evidence (commit / test run) |
 | --- | --- | --- | --- |
-| Phase 0 — Skeleton | | | |
+| Phase 0 — Skeleton | PASSED (0.1 + 0.2 gates) | 2026-09-13 | tests/e2e/test_skeleton_e2e.py + tests/subgraphs/ · ruff + mypy --strict + pytest green · ADR bake-off re-checked (see Notes) |
 | Phase 1 — Tools | PASS (Layer 1 real tools: 17/17 tool cases + 6/6 trend properties; all registry rows PASS v1) | 2026-09-13 | commits 1a687e4…750bdd7 · 30/30 pytest green · ruff + mypy --strict clean |
 | Phase 2 — Subgraphs | | | |
 | Phase 3 — Main Graph | | | |
@@ -94,24 +101,33 @@
 
 | Feature | Skills used | Overrides / technique changes |
 | --- | --- | --- |
+| 0.1 Main-Graph Skeleton | `langgraph-builder` (primary) + `ponytail` (governing) | none — skill workflow followed; langgraph-builder Step 2–6 checklist applied to stub graph |
+| 0.2 Subgraph Skeletons | `langgraph-builder` (primary) + `ponytail` (governing) | none — skill's subgraph-as-node + dict-boundary guidance followed; templates.md/state-and-reducers.md sharp edges applied (no shared state by reference, boundary key validation) |
 | 1.1 Real Tools + Trend Math | `ponytail` (governing) · `agent-tool-designer` (PRIMARY, + error-contracts.md, templates.md) · `planning-and-task-breakdown` (governing, slice order) | none inside skill domains; note: `langgraph-builder` deliberately NOT loaded — Phase 1 has zero graph wiring (sibling-exclusion rule) |
 
 ---
 
 ## Caveats Learned
 
+- **`SqliteSaver` serializer kwarg is `serde`, not `serializer`** (langgraph 1.2.11) — and pydantic models stored in checkpoints need an explicit msgpack allowlist or every round-trip warns "Deserializing unregistered type" (becomes a hard block in a future version). Encapsulated in `graph.make_sqlite_checkpointer`; recorded in library-docs.md.
+- **`config.py` reads `LLM_API_KEY` with an empty-string default in Phase 0** (docs show hard-required `os.environ[...]`) — deliberate: stubs never call the LLM and tests stay hermetic. Phase 3.1 must enforce the key (fail fast in `get_llm` when an LLM role is requested) and this caveat retires.
+- **LangGraph silently DROPS unknown keys from node returns and invoke inputs** (verified on 1.2.11) — so `extra="forbid"` on the sub-states is what makes typo'd namespace keys fail loudly, but only at the wrapper's `model_validate` call. Never move the boundary mapping to raw dict pass-through.
+- **Conditional-edge path maps must contain an `END: END` entry whenever the router can return END** — a router returning a key missing from the map raises `KeyError: '__end__'` mid-run (hit in 0.2, fixed same commit).
 - **compute_trend ordering home:** registry signature is `list[float]`, so the "sorted by record date, never insertion order" rule is enforced by the CALLER — `save_session_results` rebuilds each field's score list date-sorted from history before computing. Callers must pass date-ascending scores; blind append would break the order-independence property (proved by `test_save_shuffled_insertion_order_same_verdict`).
 - **avg_prev3 semantics:** previous window = up to 3 scores before the last-3 window (1–3 scores). Required by the eval-plan "4th record flips from not_enough_data" case; exactly 3 scores still yields `not_enough_data` (empty comparison window).
 - **save card-write failure leaves history ahead of card:** v1 two-file consistency is best-effort (each file atomically written, history first). A `ok:false` on the card write keeps the audit trail; the NEXT successful save heals the card because scores are rebuilt from history. Duplicate `record_id` re-saves are true no-ops either way.
-- **Parallel-build scaffold slice:** `pyproject.toml`, `config.py`, `state.py`, `.gitignore` were created spec-minimal by the Phase 1 session so tools could be verified; `get_llm`/`ROLE_TEMPERATURE` factory, `MainState`, dependency version pins, `.env.example`, `langgraph.json`, graph/nodes/subgraphs land with the Phase 0 session. Merges on these files are mechanical (contents are spec-determined in code-standards.md / graph-design.md).
-- **No push credentials in the Phase 1 session env** — commits are local on `main` (1a687e4…750bdd7); push pending owner credentials (GITHUB_USERNAME/GITHUB_TOKEN or `gh` auth).
+- **No push credentials in the agent session envs** — commits live on local `main` until the owner pushes (or provides GITHUB_USERNAME/GITHUB_TOKEN / `gh` auth).
 
 ---
 
 ## Notes
 
+- **Phase 0↔1 parallel-build merge (2026-09-13):** both sessions' branches reconciled on `main` — real Phase 1 tools replace the Phase 0 stubs (`report_card.py`/`render.py` kept in full; the stubs had frozen the contracts and the real implementations matched them exactly). `config.py` merged (LLM factory + `DATA_DIR` block), `state.py` took Phase 0's superset (adds `MainState`), `pyproject.toml` merged (pinned deps + `pythonpath=["src"]` + strict mypy), `.gitignore` union. Integration fix: `tests/conftest.py` now runs every test with CWD at tmp — with real tools merged, subgraph/e2e wrap turns do real `save_session_results` I/O that must never touch the repo's `data/` (code-standards.md tmp_path rule). Verified merged tree: pytest (unit + subgraphs + e2e) green, ruff clean, mypy --strict clean. Caveat: none new.
+- **Feature 1.1 (Real Tools + Trend Math):** all 5 registry tools + `compute_trend` implemented per tool-registry.md contracts (pydantic args, documented timeout budgets, 1 retry, atomic write-to-temp+rename, stable `ToolError` codes); gate: Phase 1→2 Layer 1 PASS (17/17 tool cases + 6/6 properties, all registry rows PASS v1); notable test: `test_save_shuffled_insertion_order_same_verdict` (ordering rule) + `test_read_corrupt_file_renamed_and_exists_false` (corrupt-rename contract); registries updated: `tool-registry.md` (6 rows), `progress-tracker.md`; caveat: ordering enforced at the save path (see Caveats Learned).
+- **Feature 0.2 (2026-09-13):** three compiled specialist subgraphs (dsa/comm/core) with typed sub-states (ProblemSpec, DsaState, CommState, CoreState — `extra="forbid"`), stub phase machines with hardcoded transitions (dsa: select → awaiting_attempt → wrap → done with pass/give-up/max-attempts; comm/core: ask ⇄ judge, wrap at 8, hard stop at 10), and dict-based boundary wrappers deriving `session_active`. Gate: `each subgraph runs green in isolation on scripted fake turns` PASSED (incl. sibling-namespace preservation + unknown-key rejection). Registries updated: `graph-design.md` (sub-states gained user_message/assistant_message — same-commit drift fix; boundary wrapper contract documented). Caveat: none new.
+- **Feature 0.1 (2026-09-13):** full main-graph skeleton green end-to-end — 10 stub nodes + 3-edge-family conditional wiring per graph-design.md; `MainState` field-for-field; SQLite checkpointer with allowlisted serializer; stub tools match registry signatures. Gate: `skeleton runs e2e on fake scripted conversation` PASSED. Notable test: turn-3 attempt message carries no dsa keywords and still routes to `dsa_session` — proves the `session_active` pin. Registries updated: `tool-registry.md` (stub note), `library-docs.md` (version pins + serde sharp edge). Caveat: Phase 3.1 must enforce `LLM_API_KEY`.
+- **ADR-001 framework bake-off re-check (dated, per Phase 0 checkpoint):** 2026-09-13, against the running skeleton. Turn-based invocation + checkpointed threads + conditional-edge routing + compiled-subgraphs-as-nodes all behaved per graph-design.md; the one engine surprise (serde allowlist) was contained in one factory. No mismatch with ADR-001's assumptions — LangGraph stays; bake-off closed, no re-check owed.
+
 *(append one block per completed feature, newest first — expected format:)*
 
 - **Feature 0N (example format):** one-line outcome; gate: `<gate>`; notable test: `<test>`; registries updated: `<files>`; caveat: `<anything the next session must know>`.
-
-- **Feature 1.1 (Real Tools + Trend Math):** all 5 registry tools + `compute_trend` implemented per tool-registry.md contracts (pydantic args, documented timeout budgets, 1 retry, atomic write-to-temp+rename, stable `ToolError` codes); gate: Phase 1→2 Layer 1 PASS (17/17 tool cases + 6/6 properties, all registry rows PASS v1); notable test: `test_save_shuffled_insertion_order_same_verdict` (ordering rule) + `test_read_corrupt_file_renamed_and_exists_false` (corrupt-rename contract); registries updated: `tool-registry.md` (6 rows), `progress-tracker.md`; caveat: ordering enforced at the save path (see Caveats Learned) — merge with Phase 0 session's scaffold is mechanical; push pending credentials.

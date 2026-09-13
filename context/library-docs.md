@@ -14,10 +14,12 @@ Never rely on training knowledge alone — LangGraph APIs especially have shifte
 
 | Library | What we use it for | Version |
 | --- | --- | --- |
-| `langgraph` | `StateGraph`, conditional edges, compiled subgraphs-as-nodes, checkpointer wiring | pin at Phase 0 |
-| `langchain-openai` | `ChatOpenAI` against the Groq OpenAI-compatible endpoint (`LLM_BASE_URL`) | pin at Phase 0 |
-| `langgraph-checkpoint-sqlite` | `SqliteSaver` — SQLite thread persistence across turn invocations | pin at Phase 0 |
-| `pydantic` | ALL schemas — state, tool args, structured outputs (v2 API only) | pin at Phase 0 |
+| `langgraph` | `StateGraph`, conditional edges, compiled subgraphs-as-nodes, checkpointer wiring | `1.2.11` (pinned at Phase 0, 2026-09-13) |
+| `langchain-openai` | `ChatOpenAI` against the Groq OpenAI-compatible endpoint (`LLM_BASE_URL`) | `1.6.2` (pinned at Phase 0, 2026-09-13) |
+| `langgraph-checkpoint-sqlite` | `SqliteSaver` — SQLite thread persistence across turn invocations | `3.1.1` (pinned at Phase 0, 2026-09-13) |
+| `pydantic` | ALL schemas — state, tool args, structured outputs (v2 API only) | `2.12.5` (pinned at Phase 0, 2026-09-13) |
+
+**Phase 0 sharp edge (verified on 1.2.11):** `SqliteSaver(conn, serde=...)` — the serializer kwarg is `serde`, NOT `serializer` (a `serializer=` kwarg raises `TypeError`). Pydantic models stored in checkpoints (`Profile`, `TrendVerdict`) must be explicitly allowlisted: `JsonPlusSerializer(allowed_msgpack_modules=(Profile, TrendVerdict))` — otherwise every checkpoint round-trip logs a "Deserializing unregistered type" warning that becomes a hard block in a future version. Encapsulated in `graph.make_sqlite_checkpointer`.
 
 Versions are pinned in `pyproject.toml` at Phase 0; update this table in the same commit as the pin. Nothing outside this list without a code-standards.md dependency-list update in the same commit.
 
