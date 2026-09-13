@@ -14,7 +14,7 @@
 | `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | PASS (v1) |
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | PASS (v1) |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | PASS (v1) |
-| `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | UNTESTED |
+| `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | PASS (v1) |
 
 Pure function (not an LLM tool, unit-tested directly): `compute_trend(records) -> TrendVerdict` in `src/prep_agent/tools/progress_math.py`.
 
@@ -153,7 +153,7 @@ def render_report_card(args: RenderArgs) -> bool:   # True on success
 | Error behavior | Missing report card → returns `False` with reason `no_data`. Never raises. |
 
 **Consumers:** CLI post-session hook (not a graph node).
-**Eval:** unit — renders on healthy data, contains every field name and latest score; no-op on missing data. Current: UNTESTED.
+**Eval:** unit — renders on healthy data, contains every field name and latest score; no-op on missing data. Current: PASS (v1).
 
 ---
 
