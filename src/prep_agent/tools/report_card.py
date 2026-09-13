@@ -8,6 +8,7 @@ v1 whole-record atomicity). No LLM calls; no score/trend arithmetic outside
 import json
 import logging
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
@@ -182,11 +183,37 @@ def write_profile(args: WriteProfileArgs) -> bool:
     return False
 
 
+def init_report_card(args: InitReportCardArgs) -> bool:
+    """Create the empty report card after onboarding; refuses to clobber existing data.
+
+    File already exists -> True without changes (idempotent — never overwrites history,
+    logged). Disk failure -> False; onboarding surfaces "setup incomplete, say 'continue'".
+    """
+    path = _card_path()
+    if path.exists():
+        logger.warning("[init_report_card] report-card.json already exists — leaving untouched")
+        return True
+    card = _ReportCardFile(
+        schema_version=1,
+        profile=args.profile,
+        created_at=datetime.now(UTC).isoformat(),
+        fields={key: _FieldEntry(scores=[]) for key in FIELD_KEYS},
+    )
+    for _attempt in range(2):  # registry: 1 retry on disk failure
+        try:
+            _atomic_write(path, card.model_dump_json(indent=2))
+            return True
+        except OSError as exc:
+            logger.warning("[init_report_card] write attempt failed: %s", exc)
+    return False
+
+
 __all__ = [
     "FIELD_KEYS",
     "InitReportCardArgs",
     "ReportCardData",
     "WriteProfileArgs",
+    "init_report_card",
     "read_report_card",
     "write_profile",
 ]

@@ -12,7 +12,7 @@
 | --- | --- | --- | --- | --- |
 | `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | PASS (v1) |
 | `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | PASS (v1) |
-| `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | UNTESTED |
+| `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | PASS (v1) |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | UNTESTED |
 | `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | UNTESTED |
 
@@ -104,7 +104,7 @@ def init_report_card(args: InitReportCardArgs) -> bool:   # True on success
 | Error behavior | File already exists → returns `True` without changes (idempotent) and logs — never overwrites history. Disk failure → `False`; onboarding node surfaces "setup incomplete, say 'continue'". |
 
 **Consumers:** `onboarding` (once, right after `write_profile`).
-**Eval:** unit — fresh create, idempotent re-call, refuses clobber. Current: UNTESTED.
+**Eval:** unit — fresh create, idempotent re-call, refuses clobber. Current: PASS (v1).
 
 ---
 

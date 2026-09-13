@@ -130,6 +130,43 @@ def test_write_profile_identical_overwrite_is_noop(data_dir: Path, profile_dict:
     assert list(data_dir.glob("*.tmp-*")) == []  # no leftover temp files
 
 
+# --- init_report_card: 3 registry cases -------------------------------------
+
+
+def test_init_fresh_create_makes_schema_v1_card(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
+
+    card = json.loads((data_dir / "report-card.json").read_text(encoding="utf-8"))
+    assert card["schema_version"] == 1
+    assert card["created_at"]
+    assert card["profile"] == profile_dict  # snapshot stored verbatim
+    for field in ("dsa", "communication", "core_subject"):
+        assert card["fields"][field]["scores"] == []
+
+
+def test_init_recalled_on_existing_card_is_idempotent(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
+    first = (data_dir / "report-card.json").read_text(encoding="utf-8")
+
+    assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
+    assert (data_dir / "report-card.json").read_text(encoding="utf-8") == first
+
+
+def test_init_never_clobbers_existing_data(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    _write_card(data_dir, {"dsa": {"scores": [82.0]}})
+    before = (data_dir / "report-card.json").read_text(encoding="utf-8")
+
+    assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
+    assert (data_dir / "report-card.json").read_text(encoding="utf-8") == before
+    assert json.loads(before)["fields"]["dsa"]["scores"] == [82.0]  # history preserved
+
+
 # --- validation sanity shared with later tools ------------------------------
 
 
