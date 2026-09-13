@@ -167,6 +167,169 @@ def test_init_never_clobbers_existing_data(data_dir: Path, profile_dict: dict[st
     assert json.loads(before)["fields"]["dsa"]["scores"] == [82.0]  # history preserved
 
 
+# --- save_session_results: 5 registry cases + ordering/idempotency contracts --
+
+
+def _save(data_dir: Path, record: dict[str, Any]) -> dict[str, Any]:
+    from prep_agent.tools.report_card import SaveSessionArgs, save_session_results
+
+    return save_session_results(SaveSessionArgs(record=record))
+
+
+def _card_scores(data_dir: Path, field: str) -> list[float]:
+    card = json.loads((data_dir / "report-card.json").read_text(encoding="utf-8"))
+    return card["fields"][field]["scores"]
+
+
+def test_save_first_record_writes_history_and_updates_card(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+
+    result = _save(data_dir, record_dict)
+
+    assert result["field"] == "dsa"
+    assert result["verdict"] == "not_enough_data"  # 1 score — no trend yet
+    assert (data_dir / "history" / "2026-09-12-dsa-1.json").exists()  # one file per call
+    assert _card_scores(data_dir, "dsa") == [72.0]
+    assert result["overall_avg"] == pytest.approx(72.0)
+
+
+def test_save_fourth_record_flips_verdict_from_not_enough_data(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+    for i, (date, score) in enumerate([("2026-09-08", 40.0), ("2026-09-09", 45.0), ("2026-09-10", 50.0)]):
+        _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": score})
+
+    result = _save(data_dir, {**record_dict, "record_id": "2026-09-12-dsa-1", "score": 70.0})
+
+    assert result["verdict"] == "improving"  # flips at the 4th record
+    assert result["avg_last3"] == pytest.approx(55.0)
+    assert result["avg_prev3"] == pytest.approx(40.0)
+    assert len(list((data_dir / "history").glob("*.json"))) == 4
+
+
+def test_save_duplicate_record_id_is_true_noop(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+    first = _save(data_dir, record_dict)
+    card_before = (data_dir / "report-card.json").read_text(encoding="utf-8")
+
+    second = _save(data_dir, record_dict)  # same record_id — idempotency key
+
+    assert second == first  # stored verdict returned
+    assert (data_dir / "report-card.json").read_text(encoding="utf-8") == card_before
+    assert len(list((data_dir / "history").glob("*.json"))) == 1  # nothing appended
+
+
+def test_save_monotonic_improving_series_yields_improving(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+    days = [f"2026-09-{d:02d}" for d in range(1, 7)]
+
+    result: dict[str, Any] = {}
+    for i, date in enumerate(days):
+        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 40.0 + i * 6.0})
+
+    assert result["verdict"] == "improving"
+    assert _card_scores(data_dir, "dsa") == [40.0, 46.0, 52.0, 58.0, 64.0, 70.0]
+
+
+def test_save_declining_series_yields_declining(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+    days = [f"2026-09-{d:02d}" for d in range(1, 7)]
+
+    result: dict[str, Any] = {}
+    for i, date in enumerate(days):
+        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 70.0 - i * 6.0})
+
+    assert result["verdict"] == "declining"
+
+
+def test_save_shuffled_insertion_order_same_verdict(
+    data_dir: Path, profile_dict: dict[str, Any], record_dict: dict[str, Any]
+) -> None:
+    """compute_trend property: order-independence — history is windowed by record
+    date, never insertion order (tool-registry.md Ordering)."""
+    from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
+
+    init_report_card(InitReportCardArgs(profile=profile_dict))
+    series = [(date, 40.0 + i * 6.0) for i, date in enumerate([f"2026-09-{d:02d}" for d in range(1, 7)])]
+
+    result: dict[str, Any] = {}
+    for date, score in reversed(series):  # deliberately out of date order
+        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": score})
+
+    assert result["verdict"] == "improving"  # same verdict as the ordered insertion
+    assert _card_scores(data_dir, "dsa") == [40.0, 46.0, 52.0, 58.0, 64.0, 70.0]  # date-sorted
+
+
+def test_save_invalid_record_raises_invalid_record(data_dir: Path) -> None:
+    from prep_agent.tools.errors import ToolError
+    from prep_agent.tools.report_card import SaveSessionArgs, save_session_results
+
+    with pytest.raises(ToolError, match="invalid_record"):
+        save_session_results(SaveSessionArgs(record={"field": "cooking"}))
+
+
+def test_save_missing_card_returns_ok_false_but_keeps_history(
+    data_dir: Path, record_dict: dict[str, Any]
+) -> None:
+    result = _save(data_dir, record_dict)  # no report-card.json in data dir
+
+    assert result == {"ok": False}
+    assert (data_dir / "history" / "2026-09-12-dsa-1.json").exists()  # audit trail preserved
+
+
+def test_save_disk_failure_returns_ok_false(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    record_dict: dict[str, Any],
+) -> None:
+    import prep_agent.tools.report_card as rc
+
+    def _exhausted(path: Path, text: str, tool: str) -> bool:
+        return False  # both write attempts failed (helper's contract)
+
+    monkeypatch.setattr(rc, "_write_with_retry", _exhausted)
+
+    result = _save(data_dir, record_dict)
+
+    assert result == {"ok": False}  # wrap node surfaces honest failure — never a raise
+
+
+def test_write_with_retry_swallows_oserror_and_retries_once(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import prep_agent.tools.report_card as rc
+
+    calls: list[Path] = []
+
+    def _boom(path: Path, text: str) -> None:
+        calls.append(path)
+        raise OSError("disk full")
+
+    monkeypatch.setattr(rc, "_atomic_write", _boom)
+
+    assert rc._write_with_retry(Path("card.json"), "{}", tool="test") is False
+    assert len(calls) == 2  # initial attempt + the registry's 1 retry
+
+
 # --- validation sanity shared with later tools ------------------------------
 
 

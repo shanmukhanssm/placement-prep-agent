@@ -13,7 +13,7 @@
 | `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | PASS (v1) |
 | `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | PASS (v1) |
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | PASS (v1) |
-| `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | UNTESTED |
+| `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | PASS (v1) |
 | `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | UNTESTED |
 
 Pure function (not an LLM tool, unit-tested directly): `compute_trend(records) -> TrendVerdict` in `src/prep_agent/tools/progress_math.py`.
@@ -129,7 +129,7 @@ def save_session_results(args: SaveSessionArgs) -> dict:   # returns updated Tre
 | Error behavior | Validation failure → `ToolError("invalid_record")` — wrap node catches, logs, still ends the session (scores-so-far already recorded per-question only if partial-write support lands in harden stage; v1: whole-record writes are atomic via write-to-temp + rename). Disk failure → `False`-equivalent dict with `ok: false`; wrap node tells the user honestly that scoring failed and must be re-run. |
 
 **Consumers:** `dsa_wrap`, `comm_wrap`, `core_wrap` (exactly one call per completed session).
-**Eval:** unit — append + trend recompute on: 1st record, 4th record (verdict flips from `not_enough_data`), duplicate record_id no-op, monotonic-improving series → `improving`, declining series → `declining`. Current: UNTESTED.
+**Eval:** unit — append + trend recompute on: 1st record, 4th record (verdict flips from `not_enough_data`), duplicate record_id no-op, monotonic-improving series → `improving`, declining series → `declining`. Current: PASS (v1).
 
 ---
 

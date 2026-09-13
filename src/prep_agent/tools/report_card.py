@@ -47,6 +47,10 @@ class InitReportCardArgs(BaseModel):
     profile: dict[str, object]  # snapshot stored verbatim in the fresh card
 
 
+class SaveSessionArgs(BaseModel):
+    record: dict[str, object]  # SessionRecord schema as dict — validated against SessionRecord on entry
+
+
 class _FieldEntry(BaseModel):
     scores: list[float]
     trend: TrendVerdict | None = None
@@ -107,6 +111,22 @@ def _read_history() -> list[SessionRecord]:
 def _field_scores(records: list[SessionRecord], field: str) -> list[float]:
     """Date-ascending score list for one field from already-sorted history records."""
     return [r.score for r in records if r.field == field]
+
+
+def _write_with_retry(path: Path, text: str, tool: str) -> bool:
+    """Atomic write with the registry's 1 retry on disk failure; logs per tool name."""
+    for _attempt in range(2):
+        try:
+            _atomic_write(path, text)
+            return True
+        except OSError as exc:
+            logger.warning("[%s] write of %s failed: %s", tool, path.name, exc)
+    return False
+
+
+def _verdict_for(scores: list[float], field: str) -> TrendVerdict:
+    """compute_trend result with the field name set — compute_trend itself is field-agnostic."""
+    return compute_trend(scores).model_copy(update={"field": field})
 
 
 def _load_card() -> _ReportCardFile:
@@ -174,13 +194,7 @@ def write_profile(args: WriteProfileArgs) -> bool:
             return True  # identical rewrite — no-op, never re-touches the file
     except OSError:
         pass  # unreadable existing file falls through to a fresh atomic write
-    for _attempt in range(2):  # registry: 1 retry on disk failure
-        try:
-            _atomic_write(path, payload)
-            return True
-        except OSError as exc:
-            logger.warning("[write_profile] write attempt failed: %s", exc)
-    return False
+    return _write_with_retry(path, payload, tool="write_profile")
 
 
 def init_report_card(args: InitReportCardArgs) -> bool:
@@ -199,21 +213,68 @@ def init_report_card(args: InitReportCardArgs) -> bool:
         created_at=datetime.now(UTC).isoformat(),
         fields={key: _FieldEntry(scores=[]) for key in FIELD_KEYS},
     )
-    for _attempt in range(2):  # registry: 1 retry on disk failure
-        try:
-            _atomic_write(path, card.model_dump_json(indent=2))
-            return True
-        except OSError as exc:
-            logger.warning("[init_report_card] write attempt failed: %s", exc)
-    return False
+    return _write_with_retry(path, card.model_dump_json(indent=2), tool="init_report_card")
+
+
+def save_session_results(args: SaveSessionArgs) -> dict[str, object]:
+    """The single write path for session outcomes: one history file + card score list
+    + trend recompute for the record's field (scores rebuilt date-ordered from history
+    per the registry's Ordering rule).
+
+    ``record_id`` is the idempotency key — re-saving an existing id updates nothing and
+    returns the stored verdict. Raises ToolError("invalid_record") on validation failure
+    (wrap node catches, still ends the session); returns {"ok": False} on disk failure
+    (wrap node tells the user honestly that scoring failed and must be re-run).
+    """
+    try:
+        record = SessionRecord.model_validate(args.record)
+    except ValidationError as exc:
+        raise ToolError("invalid_record") from exc
+
+    records = _read_history()
+    if any(existing.record_id == record.record_id for existing in records):
+        logger.info("[save_session_results] duplicate record_id %s — no-op", record.record_id)
+        return _verdict_for(_field_scores(records, record.field), record.field).model_dump()
+
+    # seq = per-day per-field counter (tool-registry.md side effect 1)
+    history = _history_dir()
+    seq = len(list(history.glob(f"{record.date}-{record.field}-*.json"))) + 1 if history.is_dir() else 1
+    if not _write_with_retry(
+        history / f"{record.date}-{record.field}-{seq}.json",
+        record.model_dump_json(indent=2),
+        tool="save_session_results",
+    ):
+        return {"ok": False}
+
+    records.append(record)
+    records.sort(key=lambda r: (r.date, r.record_id))
+    scores = _field_scores(records, record.field)
+    verdict = _verdict_for(scores, record.field)
+
+    try:
+        card = _load_card()
+    except _CorruptCard:
+        # history file is kept (append-only audit + recovery source); card heal lands
+        # with the next successful save, which rebuilds scores from history
+        logger.error("[save_session_results] report-card.json missing or corrupt — card not updated")
+        return {"ok": False}
+    entry = card.fields.get(record.field) or _FieldEntry(scores=[])
+    entry.scores = scores
+    entry.trend = verdict
+    card.fields[record.field] = entry
+    if not _write_with_retry(_card_path(), card.model_dump_json(indent=2), tool="save_session_results"):
+        return {"ok": False}
+    return verdict.model_dump()
 
 
 __all__ = [
     "FIELD_KEYS",
     "InitReportCardArgs",
     "ReportCardData",
+    "SaveSessionArgs",
     "WriteProfileArgs",
     "init_report_card",
     "read_report_card",
+    "save_session_results",
     "write_profile",
 ]
