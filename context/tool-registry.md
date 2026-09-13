@@ -10,7 +10,7 @@
 
 | Tool | File | Consumed by | Side effects | Eval status |
 | --- | --- | --- | --- | --- |
-| `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | UNTESTED |
+| `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | PASS (v1) |
 | `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | UNTESTED |
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | UNTESTED |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | UNTESTED |
@@ -56,7 +56,7 @@ def read_report_card() -> ReportCardData: ...
 | Error behavior | File missing → `exists=False` (valid, first-run case). JSON corrupt → renames file to `report-card.json.corrupt-{ts}`, returns `exists=False`, logs a warning — never raises. |
 
 **Consumers:** `load_context` (every turn).
-**Eval:** unit — 4 cases (missing file, healthy file, corrupt file, file with <3 records); gate = all handled per contract, zero raises. Current: UNTESTED.
+**Eval:** unit — 4 cases (missing file, healthy file, corrupt file, file with <3 records); gate = all handled per contract, zero raises. Current: PASS (v1).
 
 ---
 
