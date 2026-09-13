@@ -158,7 +158,7 @@ Design top-down, build bottom-up. The full graph exists as stubs before any real
 
 **Gate:** golden comm session E2E green.
 
-**Dependencies:** 1.1, 2.1 (real profile exists for personalization)
+**Dependencies:** 1.1, 2.1 (real profile exists for personalization), final `context/behavior-comm.md` (owner behavior contract — see behavior-specs.md)
 
 **Files likely touched:**
 - `src/prep_agent/subgraphs/comm.py`, `src/prep_agent/prompts/communication.py`
@@ -185,7 +185,7 @@ Design top-down, build bottom-up. The full graph exists as stubs before any real
 
 **Gate:** pass path + give-up path + max-attempts path all green.
 
-**Dependencies:** 1.1, 2.1
+**Dependencies:** 1.1, 2.1, final `context/behavior-dsa.md` (owner behavior contract — see behavior-specs.md)
 
 **Files likely touched:**
 - `src/prep_agent/subgraphs/dsa.py`, `src/prep_agent/prompts/dsa.py`
@@ -211,7 +211,7 @@ Design top-down, build bottom-up. The full graph exists as stubs before any real
 
 **Gate:** 8–10 Q session green, ~30% DSA-theory mix observable.
 
-**Dependencies:** 1.1, 2.1
+**Dependencies:** 1.1, 2.1, final `context/behavior-core.md` (owner behavior contract — see behavior-specs.md)
 
 **Files likely touched:**
 - `src/prep_agent/subgraphs/core.py`, `src/prep_agent/prompts/core_subject.py`
@@ -455,3 +455,4 @@ Per AGENTS.md §10, run in order; each assumes the previous one's output.
 - One feature per session; tests green before any commit; the three living files (`tool-registry.md`, `prompt-registry.md`, `progress-tracker.md`) update in the same commit as the feature they describe.
 - Commit format: `[Phase N.F] feature-slug: description` + a Tests/Gate/Registries/Skills line. Direct to main (`branch_mode: false`).
 - If a tool needs a different signature than `tool-registry.md` declares — stop, update the registry and graph-design.md first, then build.
+- Specialist behavior is owner-contracted: features 2.2–2.4 do not start until their behavior spec (`context/behavior-comm.md` / `-dsa.md` / `-core.md`) is final per `context/behavior-specs.md`. Where a spec changes a registered contract (score scale, rubric dimensions → `AnswerScore`, record shape), tool-registry / prompt-registry / graph-design update in the same commit. Onboarding (2.1) needs no spec — its fields and flow were fixed at intake.
