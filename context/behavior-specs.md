@@ -19,9 +19,9 @@ Two consequences of this split:
 
 | Spec file | Governs | Final BEFORE | Status |
 | --- | --- | --- | --- |
-| `context/behavior-comm.md` | comm_session interviewer + judge (feature 2.2) | Phase 2.2 build session | not started |
-| `context/behavior-dsa.md` | dsa_session selector + evaluator (feature 2.3) | Phase 2.3 build session | not started |
-| `context/behavior-core.md` | core_session examiner + judge (feature 2.4) | Phase 2.4 build session | not started |
+| `context/behavior-comm.md` | comm_session interviewer + judge (feature 2.2) | Phase 2.2 build session | draft v1 (2026-09-13, Mode B) — owner-approved as-is (no markup changes) |
+| `context/behavior-dsa.md` | dsa_session selector + evaluator (feature 2.3) | Phase 2.3 build session | draft v1 (2026-09-13, Mode B) — owner-approved as-is (no markup changes) |
+| `context/behavior-core.md` | core_session examiner + judge (feature 2.4) | Phase 2.4 build session | draft v1 (2026-09-13, Mode B) — owner-approved as-is (no markup changes) |
 | onboarding | — | — | **no spec file needed**: the 6 fields, fixed order, and validation rules were locked at intake and are encoded in feature 2.1's acceptance criteria |
 
 Phase 0 (skeletons), Phase 1 (tools), Phase 3 (wiring/HTML) are behavior-agnostic — they proceed without specs. **Hard deadline:** all three specs must be final before the Phase 4.1 eval design, because eval Layer 3 (judge-consistency anchors) and the golden E2E cases (Layer 5) are derived from them.
