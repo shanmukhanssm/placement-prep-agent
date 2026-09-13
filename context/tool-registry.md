@@ -11,7 +11,7 @@
 | Tool | File | Consumed by | Side effects | Eval status |
 | --- | --- | --- | --- | --- |
 | `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | PASS (v1) |
-| `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | UNTESTED |
+| `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | PASS (v1) |
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | UNTESTED |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | UNTESTED |
 | `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | UNTESTED |
@@ -80,7 +80,7 @@ def write_profile(args: WriteProfileArgs) -> bool:   # True on success
 | Error behavior | Validation failure → raises `ToolError("invalid_profile")` — onboarding node catches, re-asks the offending field. Disk failure → returns `False`, node keeps collected answers in checkpointed state and retries next turn. |
 
 **Consumers:** `onboarding` (once, at completion).
-**Eval:** unit — write → read round-trip; invalid payload rejected; overwrite-with-identical is a no-op. Current: UNTESTED.
+**Eval:** unit — write → read round-trip; invalid payload rejected; overwrite-with-identical is a no-op. Current: PASS (v1).
 
 ---
 

@@ -93,6 +93,43 @@ def test_read_fewer_than_three_records_not_enough_data(data_dir: Path) -> None:
     assert result.fields["dsa"]["trend"]["verdict"] == "not_enough_data"
 
 
+# --- write_profile: 3 registry cases ----------------------------------------
+
+
+def test_write_profile_round_trip_preserves_schema(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+    from prep_agent.state import Profile
+    from prep_agent.tools.report_card import WriteProfileArgs, write_profile
+
+    assert write_profile(WriteProfileArgs(profile=profile_dict)) is True
+
+    stored = Profile.model_validate(json.loads((data_dir / "profile.json").read_text(encoding="utf-8")))
+    assert stored == Profile.model_validate(profile_dict)
+    assert stored.core_subject == "aiml"
+
+
+def test_write_profile_invalid_payload_raises_invalid_profile(data_dir: Path) -> None:
+    from prep_agent.tools.errors import ToolError
+    from prep_agent.tools.report_card import WriteProfileArgs, write_profile
+
+    bad = {"name": "Ravi", "core_subject": "physics"}  # invalid Literal + missing fields
+
+    with pytest.raises(ToolError, match="invalid_profile"):
+        write_profile(WriteProfileArgs(profile=bad))
+    assert not (data_dir / "profile.json").exists()  # nothing written on rejection
+
+
+def test_write_profile_identical_overwrite_is_noop(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+    from prep_agent.tools.report_card import WriteProfileArgs, write_profile
+
+    path = data_dir / "profile.json"
+    assert write_profile(WriteProfileArgs(profile=profile_dict)) is True
+    first = path.read_text(encoding="utf-8")
+
+    assert write_profile(WriteProfileArgs(profile=profile_dict)) is True
+    assert path.read_text(encoding="utf-8") == first  # byte-identical — untouched
+    assert list(data_dir.glob("*.tmp-*")) == []  # no leftover temp files
+
+
 # --- validation sanity shared with later tools ------------------------------
 
 

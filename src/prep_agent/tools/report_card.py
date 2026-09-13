@@ -13,7 +13,8 @@ from pathlib import Path
 from pydantic import BaseModel, ValidationError
 
 from prep_agent.config import DATA_DIR
-from prep_agent.state import SessionRecord, TrendVerdict
+from prep_agent.state import Profile, SessionRecord, TrendVerdict
+from prep_agent.tools.errors import ToolError
 from prep_agent.tools.progress_math import compute_trend
 
 logger = logging.getLogger("report_card")
@@ -154,10 +155,38 @@ def read_report_card() -> ReportCardData:
     )
 
 
+def write_profile(args: WriteProfileArgs) -> bool:
+    """Persist the onboarding profile exactly once, idempotently (atomic upsert).
+
+    Raises ToolError("invalid_profile") on validation failure — onboarding catches it
+    and re-asks the offending field; returns False on disk failure so the node keeps
+    collected answers in checkpointed state and retries next turn.
+    """
+    try:
+        profile = Profile.model_validate(args.profile)
+    except ValidationError as exc:
+        raise ToolError("invalid_profile") from exc
+    payload = profile.model_dump_json(indent=2)
+    path = _profile_path()
+    try:
+        if path.exists() and path.read_text(encoding="utf-8") == payload:
+            return True  # identical rewrite — no-op, never re-touches the file
+    except OSError:
+        pass  # unreadable existing file falls through to a fresh atomic write
+    for _attempt in range(2):  # registry: 1 retry on disk failure
+        try:
+            _atomic_write(path, payload)
+            return True
+        except OSError as exc:
+            logger.warning("[write_profile] write attempt failed: %s", exc)
+    return False
+
+
 __all__ = [
     "FIELD_KEYS",
     "InitReportCardArgs",
     "ReportCardData",
     "WriteProfileArgs",
     "read_report_card",
+    "write_profile",
 ]
