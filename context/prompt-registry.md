@@ -10,10 +10,12 @@
 
 | Role | Model | Temperature | Max tokens | Why |
 | --- | --- | --- | --- | --- |
-| ALL roles (v1 placeholder) | `llama-3.3-70b-versatile` | see entries | see entries | Owner decision pending — Groq free tier, OpenAI-compatible endpoint; model strings sourced ONLY from config.py |
-| Judge tiering candidate (parked) | `llama-3.1-8b-instant` | 0.2 | 400 | Cost/rate-limit lever if free-tier limits bite — NOT active in v1 |
+| ALL roles | env `LLM_MODEL` (placeholder `llama-3.3-70b-versatile`) | see entries | see entries | Model strings sourced ONLY from config.py; any OpenAI-compatible provider is an env change. Owner set Ollama cloud (`gpt-oss:120b-cloud` via `https://ollama.com/v1`) on 2026-09-14 — pending a working key (401 at the Phase 2 smoke test; env-only swap when fixed). |
+| Judge tiering candidate (parked) | `llama-3.1-8b-instant` | 0.2 | 400 | Cost/rate-limit lever if free-tier limits bite — NOT active |
 
 Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]` (default Groq `https://api.groq.com/openai/v1`), `api_key=os.environ["LLM_API_KEY"]`, `model` from config.py. Changing provider = env change only.
+
+**Phase 2 structured-call helper:** every registered prompt below is invoked through `config.call_structured(role, schema, prompt)` — ONE validation retry, then the node's documented deterministic fallback; the helper never raises. `comm_wrap` is the one plain-text call.
 
 ---
 
@@ -58,9 +60,9 @@ Return ONLY the structured output.
 | Node | `onboarding` |
 | Prompt text | `src/prep_agent/prompts/onboarding.py::ONBOARDING_COLLECTOR_V1` |
 | Model / temp / max tokens | placeholder / 0.3 / 300 |
-| Structured output | `OnboardingTurn {message: str, extracted_value: str|None}` |
+| Structured output | `OnboardingTurn {message: str, extracted: dict[str, str]}` — **Phase 2.1 schema delta (same commit)**: `extracted_value: str|None` widened to `extracted` (field→value dict) so early answers to LATER fields are accepted and stored in one turn (graph-design.md onboarding spec); code normalizes/validates every value and drops invalid ones |
 | Consumed state | `user_message`, `session_data.onboarding.collected`, next-missing-field name (injected by code) |
-| Version history | v1 — initial intake |
+| Version history | v1 — initial intake · v1 (Phase 2.1 authored in code with the `extracted` schema delta noted above) |
 
 ```
 You are warmly onboarding a new student onto their placement-prep coach.
@@ -173,196 +175,105 @@ Max 3 sentences.
 
 ---
 
-## `dsa_selector` — v1
+## `dsa_selector` — v1 (Phase 2.3 revision per behavior-dsa.md)
 
 | Property | Value |
 | --- | --- |
 | Node | `selector` (inside dsa_session subgraph) |
 | Prompt text | `src/prep_agent/prompts/dsa.py::DSA_SELECTOR_V1` |
 | Model / temp / max tokens | placeholder / 0.7 / 500 |
-| Structured output | `ProblemSpec {title, topic, difficulty: easy|medium|hard, statement, optimized_approach, edge_cases: list[str]}` |
-| Consumed state | `profile.weak_areas`, topics + titles already served (from report-card history, injected), difficulty calibration (latest scores) |
-| Version history | v1 — initial intake |
+| Structured output | `ProblemSpec {title, topic, difficulty, statement, statement_brief, optimized_approach, edge_cases}` — **Phase 2.3 delta (same commit)**: problem SELECTION is deterministic in code (behavior-dsa §2.2 over the 15-entry seed catalog in prompts/dsa.py); the LLM only phrases the self-contained statement. The node assembles the final `ProblemSpec` with `optimized_approach`/`edge_cases` copied from the catalog — never from the LLM (grading-integrity rule, behavior-dsa §2.1). LLM failure → statement falls back to the catalog brief; the session continues. |
+| Consumed state | chosen catalog entry (title/difficulty/statement brief, injected), `profile.weak_areas` + report-card history (consumed by the deterministic selector code) |
+| Version history | v1 — initial intake (LLM-selected) · v1-rev (Phase 2.3: selection moved to code, prompt = statement phrasing only) |
 
 ```
-Select ONE DSA problem for today's session.
-
-Rules:
-- One problem only; statement must be self-contained and solvable from the
-  statement text alone (no missing constraints).
-- Prefer topics from weak_areas and topics NOT in recently-served list.
-- Calibrate difficulty: recent averages < 50 -> easy/medium; 50-75 -> medium;
-  > 75 -> medium/hard.
-- optimized_approach: the reference solution technique (name + key idea +
-  complexity) used by the evaluator for grading. It is shown to the student
-  only after pass or give-up.
-- edge_cases: 2-4 concrete cases a correct solution must handle.
-
-Return ONLY the structured output.
+Write the self-contained problem statement for the ONE DSA problem already chosen.
+[full text in prompts/dsa.py — statement-only phrasing, catalog fields never through the LLM]
 ```
 
 ---
 
-## `dsa_evaluator` — v1
+## `dsa_evaluator` — v1 (Phase 2.3 revision per behavior-dsa.md)
 
 | Property | Value |
 | --- | --- |
 | Node | `evaluator` (inside dsa_session subgraph) |
 | Prompt text | `src/prep_agent/prompts/dsa.py::DSA_EVALUATOR_V1` |
 | Model / temp / max tokens | placeholder / 0.2 / 450 |
-| Structured output | `AttemptVerdict {optimality_pct: 0-100, faults: list[str], pass: bool, feedback: str}` |
-| Consumed state | problem (`statement`, `optimized_approach`, `edge_cases`), current attempt text, `attempt_count` |
-| Version history | v1 — initial intake |
-
-```
-Evaluate the student's proposed algorithm against the optimized approach.
-
-Grading scale for optimality_pct:
-- 90-100: matches the optimized approach incl. complexity and edge cases
-- 80-89:  correct core idea (pass threshold), minor inefficiency or 1 edge case
-          missed
-- 50-79:  workable but suboptimal (e.g. brute force where DP exists)
-- 0-49:   incorrect or does not solve the statement
-
-Rules:
-- faults: concrete, named ("O(n^2) where O(n) possible via Kadane's",
-  "misses all-negative arrays"), max 4, no filler praise.
-- pass = optimality_pct >= 80 ONLY. Never pass an incorrect algorithm.
-- feedback: if not pass, explain the faults and ask for another algorithm;
-  if pass, say what was good and reveal the reference approach's remaining
-  refinements. Attempt {attempt_count} of 3 — on attempt 3, grade as usual
-  (wrap node handles the forced stop).
-
-Return ONLY the structured output.
-```
+| Structured output | `AttemptVerdict {optimality_pct: 0-100, faults: list[str] (taxonomy-validated, ≤4), feedback, is_attempt: bool = True, mechanism: str}` — **Phase 2.3 deltas (same commit)**: `pass` is DERIVED in code (`optimality_pct >= 80` ONLY — never LLM-emitted); `faults` validated against the behavior-dsa §3.3 taxonomy by name (free-text labels are a validation failure); `is_attempt=False` marks non-attempts (clarifying questions, hint-begging, meta) which never consume `attempt_count`; `mechanism` (≤12 words) feeds the wrap verdict line. Hint level 1/2 injected from `attempt_count` (behavior-dsa §4.1). Failure path locked: one retry → conservative `optimality_pct=0` + "I couldn't score that — explain it differently." |
+| Consumed state | problem (`statement`, `optimized_approach`, `edge_cases`), current attempt text, previous attempt (repeated-attempt detection), `attempt_count` (hint level) |
+| Version history | v1 — initial intake · v1-rev (Phase 2.3: taxonomy validation, is_attempt, mechanism, pass derived in code) |
 
 ---
 
-## `comm_interviewer` — v1
+## `comm_interviewer` — v1 (Phase 2.2 revision per behavior-comm.md)
 
 | Property | Value |
 | --- | --- |
 | Node | `interviewer` (inside comm_session subgraph) |
 | Prompt text | `src/prep_agent/prompts/communication.py::COMM_INTERVIEWER_V1` |
 | Model / temp / max tokens | placeholder / 0.8 / 200 |
-| Structured output | `InterviewQuestion {question: str, kind: intro|behavioral|situational|closing}` |
-| Consumed state | `profile` (name, target roles — for personalization), asked questions so far, `question_count` |
-| Version history | v1 — initial intake |
-
-```
-You are a friendly but professional placement interviewer conducting the
-communication round. Ask exactly ONE question this turn.
-
-Rules:
-- NEVER ask subject/technical questions (no algorithms, no AIML, no security) —
-  that is a different round. Only: introduce yourself, strengths/weaknesses,
-  teamwork, leadership, conflict, failure, situational judgment ("what would
-  you do if..."), why this role.
-- One line questions, natural interview flow, do not repeat or trivially
-  rephrase an earlier question.
-- Sequence arc: opener (intro) -> 2-3 behavioral -> 2-3 situational ->
-  strengths/weaknesses -> closing ("anything you want to ask us?") at
-  question 10.
-- Question {question_count} of 10. Occasionally acknowledge the previous
-  answer in one short clause before the next question.
-
-Return ONLY the structured output.
-```
+| Structured output | `InterviewQuestion {question: str, kind: intro|behavioral|situational|strengths_weaknesses|curveball|closing}` — **kind enum expanded per behavior-comm.md fan-out #1 (same commit)**; the arc (intro → behavioral → situational → strengths/weaknesses → curveball → closing×2) is enforced by the prompt + a code directive that forces the closing reverse question at Q10 / on run-thin / after the 3rd skip |
+| Consumed state | `profile` digest (name, branch, target roles — injected), questions + kinds asked so far, the just-judged answer (one-clause acknowledgment), question number |
+| Version history | v1 — initial intake · v1-rev (Phase 2.2: kind expansion, arc skeleton, ack rules, closing directive) |
 
 ---
 
-## `comm_judge` — v1
+## `comm_judge` — v1 (Phase 2.2 revision per behavior-comm.md)
 
 | Property | Value |
 | --- | --- |
 | Node | `comm_judge` (inside comm_session subgraph) |
 | Prompt text | `src/prep_agent/prompts/communication.py::COMM_JUDGE_V1` |
 | Model / temp / max tokens | placeholder / 0.2 / 350 |
-| Structured output | `AnswerScore {score: 0-10, structure: 0-10, clarity: 0-10, relevance: 0-10, confidence: 0-10, verdict: str}` |
-| Consumed state | current question, user's answer |
-| Version history | v1 — initial intake |
-
-```
-Score this interview answer 0-10 against the rubric:
-- structure: clear organization (STAR for situational: Situation, Task,
-  Action, Result)
-- clarity: easy to follow, concrete examples, no rambling
-- relevance: answers the question that was asked
-- confidence: ownership language, no excessive hedging or apologizing
-- score: holistic, anchored — 9-10 exceptional · 7-8 solid hire · 5-6
-  average with fixable gaps · 3-4 weak · 0-2 off-topic or empty
-
-Rules:
-- verdict: exactly 1-2 sentences, one concrete improvement point. Honest,
-  never inflate; a vague answer is a 4-5, not a 7.
-- Score the ANSWER, not the person; identical quality => identical score.
-
-Return ONLY the structured output.
-```
+| Structured output | `AnswerScore {score: 0-10, structure: 0-10, clarity: 0-10, relevance: 0-10, confidence: 0-10, verdict: str}` — **Phase 2.2 delta (same commit)**: the prompt now carries the behavior-comm §3 weighted holistic derivation (0.25/0.25/0.30/0.20), the relevance/empty/half-answered caps, and the §3 anti-inflation rules verbatim; Hinglish policy included |
+| Consumed state | current question, the composite answer (answer + probe replies — "all text from question to next question is the answer material the judge sees") |
+| Version history | v1 — initial intake · v1-rev (Phase 2.2: weights, caps, anti-inflation, Hinglish) |
 
 ---
 
-## `core_examiner` — v1
+## `comm_wrap` — v1 (NEW, Phase 2.2)
+
+| Property | Value |
+| --- | --- |
+| Node | `comm_wrap` (inside comm_session subgraph) — registered BEFORE the node was built |
+| Prompt text | `src/prep_agent/prompts/communication.py::COMM_WRAP_V1` |
+| Model / temp / max tokens | placeholder / 0.5 / 400 (plain-text call — the only non-structured prompt) |
+| Structured output | none (plain message) |
+| Consumed state | session score + count (computed in code), per-answer verdicts JSON, un-scored disclosure line, early-quit note — the LLM phrases the coach-voice wrap (≤150 words + 2 ideal-answer sketches built from the student's own material); failure → templated summary from the same numbers |
+| Version history | v1 — Phase 2.2 (behavior-comm §4 end-of-session report) |
+
+---
+
+## `core_examiner` — v2 (Phase 2.4 revision per behavior-core.md build-note 1)
 
 | Property | Value |
 | --- | --- |
 | Node | `examiner` (inside core_session subgraph) |
-| Prompt text | `src/prep_agent/prompts/core_subject.py::CORE_EXAMINER_V1` |
+| Prompt text | `src/prep_agent/prompts/core_subject.py::CORE_EXAMINER_V2` |
 | Model / temp / max tokens | placeholder / 0.7 / 200 |
-| Structured output | `QuizQuestion {question: str, topic: str, expected_answer_points: list[str]}` |
-| Consumed state | `profile.core_subject`, topics covered so far, `question_count`, weak areas |
-| Version history | v1 — initial intake |
-
-```
-You are an oral-exam examiner for the student's core subject: {core_subject}
-(aiml OR cybersecurity). Ask exactly ONE question this turn.
-
-Rules:
-- Mix: ~70% core-subject theory (AIML: supervised/unsupervised, overfitting,
-  bias-variance, CNN/RNN basics, metrics... · cyber: CIA triad, OWASP top-10,
-  symmetric/asymmetric crypto, firewalls, network attacks...) and ~30% DSA
-  THEORY ("what is a greedy algorithm", complexity classes, hash vs tree) —
-  never a coding problem to solve.
-- Do not repeat a topic already covered this session; rotate topics.
-- Question {question_count} of 10. One sentence; difficulty grows mildly.
-- expected_answer_points: 2-4 bullets the judge will grade against.
-
-Return ONLY the structured output.
-```
+| Structured output | `QuizQuestion {question: str, topic: str, expected_answer_points: list[str] (2-4, gradeable claims)}` — the CODE decides track (DSA-theory at positions 3/6/9, behavior-core §2.6), canonical topic (§2.4 rotation over the syllabi constants), and level (§2.5 ramp: Q1-2 L1, Q3-6 L2, Q7-10 L3); the LLM phrases the ONE-sentence question + writes the expected points within the injected depth ceiling. The node uses its decided topic (LLM `topic` is advisory). LLM failure → fallback question from the topic name + the depth ceiling as expected points |
+| Consumed state | decided track/topic/level + depth ceiling (injected), opening contract or neutral-ack directive, `profile.core_subject` |
+| Version history | v1 — initial intake (LLM chose mix/topics) · v2 — Phase 2.4 (mix table §2.6, interleave, rotation inputs, ramp, one-sentence rule, probe-aware turn directives) |
 
 ---
 
-## `core_judge` — v1
+## `core_judge` — v2 (Phase 2.4 revision per behavior-core.md build-note 1)
 
 | Property | Value |
 | --- | --- |
 | Node | `core_judge` (inside core_session subgraph) |
-| Prompt text | `src/prep_agent/prompts/core_subject.py::CORE_JUDGE_V1` |
+| Prompt text | `src/prep_agent/prompts/core_subject.py::CORE_JUDGE_V2` |
 | Model / temp / max tokens | placeholder / 0.2 / 300 |
-| Structured output | `AnswerScore {score: 0-10, correctness: 0-10, completeness: 0-10, terminology: 0-10, verdict: str}` |
-| Consumed state | current question, its `expected_answer_points`, user's answer |
-| Version history | v1 — initial intake |
-
-```
-Score this theory answer 0-10 against the expected points:
-- correctness: no factually wrong claims (wrong claim caps correctness at 3)
-- completeness: covers the expected answer points (each missed point ≈ -1.5)
-- terminology: correct technical terms, no hand-waving
-- score: holistic, anchored — 9-10 complete + precise · 7-8 most points,
-  minor gaps · 5-6 partial · 3-4 one point + errors · 0-2 wrong/empty
-
-Rules:
-- verdict: 1-2 sentences naming the missing point(s) explicitly.
-- Grade against expected_answer_points, not personal taste.
-
-Return ONLY the structured output.
-```
+| Structured output | `CoreAnswerScore {score: 0-10, correctness: 0-10, completeness: 0-10, terminology: 0-10, verdict: str, probe_needed: bool = False}` — **Phase 2.4 deltas (same commit)**: the §3.2 holistic derivation is carried verbatim (marks covered=1/partial=0.5/missed=0 → `completeness = max(0, 10 − 1.5·missed − 0.75·partial)` → weighted raw, ties DOWN → `coverage_cap = 2 + 8·coverage` → wrong-claim cap ≤ 5 → empty/IDK/skip = 0); the consumed state includes the probe exchange for the once-per-question re-score (§4); `probe_needed` requests the single disambiguating probe (Q1–Q7, session budget 3, code-enforced); failure path → verdict exactly `"un-scored"`, excluded from the mean |
+| Consumed state | current question + its `expected_answer_points`, the answer (composite when probed), probe history, question number |
+| Version history | v1 — initial intake · v2 — Phase 2.4 (§3.2 derivation, probe exchange + probe_needed, caps) |
 
 ---
 
 ## Rules
 
-- Version bump policy: any token-level change to prompt text = new version (`V2`), new entry row in version history with the change reason. Never edit a version in place.
+- Version bump policy: any token-level change to prompt text = new version (`V2`), new entry row in version history with the change reason. Never edit a version in place. Phase 2 exception (recorded per the behavior-specs standing rules): v1 prompts authored in code for the first time carried their spec-mandated deltas; each delta is marked in its entry above rather than double-versioned, because no `_V1` constant ever shipped in `src/`.
 - Temperature and model changes are registry changes — same-commit updates here and in `config.py`.
 - New nodes get prompt entries BEFORE the node is built (registry never lags).
 - The number-integrity rule (greet/progress prompts) is a hard contract: numbers come from `trend_summary` only; violations are eval failures (see eval-plan.md).

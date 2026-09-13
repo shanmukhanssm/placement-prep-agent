@@ -5,10 +5,32 @@ assistant_message and feeds the next user_message back in. The CLI is the only
 print surface (code-standards.md). Run: python -m prep_agent
 """
 
+import os
 import uuid
+from pathlib import Path
 
-from prep_agent.config import RECURSION_LIMIT
-from prep_agent.graph import graph
+
+def _load_env() -> None:
+    """Minimal .env loader (stdlib; dotenv is not in the closed dependency list).
+
+    MUST run before prep_agent.config is imported (config reads env at import).
+    Existing environment variables always win; values are never printed.
+    """
+    env = Path(".env")
+    if not env.exists():
+        return
+    for line in env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_env()
+
+from prep_agent.config import RECURSION_LIMIT  # noqa: E402 — .env must load first
+from prep_agent.graph import graph  # noqa: E402
 
 
 def new_session_id() -> str:

@@ -34,6 +34,13 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# prompts/ holds version-pinned prompt TEXT and catalog data — prose, not code;
+# line-length does not apply to it (code-standards.md formatting still covers all logic).
+"src/prep_agent/prompts/*" = ["E501"]
+# tests carry long canned-fixture literals (structured LLM outputs) — data, not logic.
+"tests/*" = ["E501"]
+
 [tool.mypy]
 strict = true
 python_version = "3.11"

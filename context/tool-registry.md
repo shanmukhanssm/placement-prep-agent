@@ -10,7 +10,7 @@
 
 | Tool | File | Consumed by | Side effects | Eval status |
 | --- | --- | --- | --- | --- |
-| `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context` | None (read-only) | PASS (v1) |
+| `read_report_card` | `src/prep_agent/tools/report_card.py` | `load_context`; Phase 2: dsa `selector` (rotation history), core `_pick_topic` (rotation history), the three wrap nodes (record-id seq minting) | None (read-only) | PASS (v1) |
 | `write_profile` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Writes `data/profile.json` | PASS (v1) |
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | PASS (v1) |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | PASS (v1) |
