@@ -44,7 +44,9 @@ def test_read_missing_file_is_valid_first_run(data_dir: Path) -> None:
     assert result.recent_history is None
 
 
-def test_read_healthy_file_returns_everything_intact(data_dir: Path, record_dict: dict[str, Any]) -> None:
+def test_read_healthy_file_returns_everything_intact(
+    data_dir: Path, record_dict: dict[str, Any]
+) -> None:
     fields = {
         "dsa": {"scores": [60.0, 65.0, 70.0, 75.0]},
         "communication": {"scores": [70.0]},
@@ -67,10 +69,15 @@ def test_read_healthy_file_returns_everything_intact(data_dir: Path, record_dict
     assert dsa["trend"]["verdict"] == "improving"  # precomputed — nodes never do trend math
     assert result.recent_history is not None
     # newest first: 09-12 record before 09-11 record
-    assert [r["record_id"] for r in result.recent_history] == ["2026-09-12-dsa-2", "2026-09-11-dsa-1"]
+    assert [r["record_id"] for r in result.recent_history] == [
+        "2026-09-12-dsa-2",
+        "2026-09-11-dsa-1",
+    ]
 
 
-def test_read_corrupt_file_renamed_and_exists_false(data_dir: Path, caplog: pytest.LogCaptureFixture) -> None:
+def test_read_corrupt_file_renamed_and_exists_false(
+    data_dir: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     (data_dir / "report-card.json").write_text("{not valid json", encoding="utf-8")
 
     with caplog.at_level(logging.WARNING, logger="report_card"):
@@ -96,13 +103,17 @@ def test_read_fewer_than_three_records_not_enough_data(data_dir: Path) -> None:
 # --- write_profile: 3 registry cases ----------------------------------------
 
 
-def test_write_profile_round_trip_preserves_schema(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+def test_write_profile_round_trip_preserves_schema(
+    data_dir: Path, profile_dict: dict[str, Any]
+) -> None:
     from prep_agent.state import Profile
     from prep_agent.tools.report_card import WriteProfileArgs, write_profile
 
     assert write_profile(WriteProfileArgs(profile=profile_dict)) is True
 
-    stored = Profile.model_validate(json.loads((data_dir / "profile.json").read_text(encoding="utf-8")))
+    stored = Profile.model_validate(
+        json.loads((data_dir / "profile.json").read_text(encoding="utf-8"))
+    )
     assert stored == Profile.model_validate(profile_dict)
     assert stored.core_subject == "aiml"
 
@@ -118,7 +129,9 @@ def test_write_profile_invalid_payload_raises_invalid_profile(data_dir: Path) ->
     assert not (data_dir / "profile.json").exists()  # nothing written on rejection
 
 
-def test_write_profile_identical_overwrite_is_noop(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+def test_write_profile_identical_overwrite_is_noop(
+    data_dir: Path, profile_dict: dict[str, Any]
+) -> None:
     from prep_agent.tools.report_card import WriteProfileArgs, write_profile
 
     path = data_dir / "profile.json"
@@ -133,7 +146,9 @@ def test_write_profile_identical_overwrite_is_noop(data_dir: Path, profile_dict:
 # --- init_report_card: 3 registry cases -------------------------------------
 
 
-def test_init_fresh_create_makes_schema_v1_card(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+def test_init_fresh_create_makes_schema_v1_card(
+    data_dir: Path, profile_dict: dict[str, Any]
+) -> None:
     from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
 
     assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
@@ -146,7 +161,9 @@ def test_init_fresh_create_makes_schema_v1_card(data_dir: Path, profile_dict: di
         assert card["fields"][field]["scores"] == []
 
 
-def test_init_recalled_on_existing_card_is_idempotent(data_dir: Path, profile_dict: dict[str, Any]) -> None:
+def test_init_recalled_on_existing_card_is_idempotent(
+    data_dir: Path, profile_dict: dict[str, Any]
+) -> None:
     from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
 
     assert init_report_card(InitReportCardArgs(profile=profile_dict)) is True
@@ -203,7 +220,7 @@ def test_save_fourth_record_flips_verdict_from_not_enough_data(
     from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
 
     init_report_card(InitReportCardArgs(profile=profile_dict))
-    for i, (date, score) in enumerate([("2026-09-08", 40.0), ("2026-09-09", 45.0), ("2026-09-10", 50.0)]):
+    for date, score in [("2026-09-08", 40.0), ("2026-09-09", 45.0), ("2026-09-10", 50.0)]:
         _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": score})
 
     result = _save(data_dir, {**record_dict, "record_id": "2026-09-12-dsa-1", "score": 70.0})
@@ -240,7 +257,10 @@ def test_save_monotonic_improving_series_yields_improving(
 
     result: dict[str, Any] = {}
     for i, date in enumerate(days):
-        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 40.0 + i * 6.0})
+        result = _save(
+            data_dir,
+            {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 40.0 + i * 6.0},
+        )
 
     assert result["verdict"] == "improving"
     assert _card_scores(data_dir, "dsa") == [40.0, 46.0, 52.0, 58.0, 64.0, 70.0]
@@ -256,7 +276,10 @@ def test_save_declining_series_yields_declining(
 
     result: dict[str, Any] = {}
     for i, date in enumerate(days):
-        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 70.0 - i * 6.0})
+        result = _save(
+            data_dir,
+            {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": 70.0 - i * 6.0},
+        )
 
     assert result["verdict"] == "declining"
 
@@ -269,11 +292,15 @@ def test_save_shuffled_insertion_order_same_verdict(
     from prep_agent.tools.report_card import InitReportCardArgs, init_report_card
 
     init_report_card(InitReportCardArgs(profile=profile_dict))
-    series = [(date, 40.0 + i * 6.0) for i, date in enumerate([f"2026-09-{d:02d}" for d in range(1, 7)])]
+    days = [f"2026-09-{d:02d}" for d in range(1, 7)]
+    series = [(date, 40.0 + i * 6.0) for i, date in enumerate(days)]
 
     result: dict[str, Any] = {}
     for date, score in reversed(series):  # deliberately out of date order
-        result = _save(data_dir, {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": score})
+        result = _save(
+            data_dir,
+            {**record_dict, "record_id": f"{date}-dsa-1", "date": date, "score": score},
+        )
 
     assert result["verdict"] == "improving"  # same verdict as the ordered insertion
     assert _card_scores(data_dir, "dsa") == [40.0, 46.0, 52.0, 58.0, 64.0, 70.0]  # date-sorted

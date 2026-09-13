@@ -41,6 +41,10 @@ def record_dict() -> dict[str, Any]:
         "score": 72.0,
         "duration_min": 25.0,
         "questions": [
-            {"question": "Walk through your algorithm", "verdict": "workable but O(n^2)", "score": 72.0}
+            {
+                "question": "Walk through your algorithm",
+                "verdict": "workable but O(n^2)",
+                "score": 72.0,
+            }
         ],
     }

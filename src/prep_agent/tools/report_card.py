@@ -48,7 +48,7 @@ class InitReportCardArgs(BaseModel):
 
 
 class SaveSessionArgs(BaseModel):
-    record: dict[str, object]  # SessionRecord schema as dict — validated against SessionRecord on entry
+    record: dict[str, object]  # SessionRecord schema as dict — validated on entry
 
 
 class _FieldEntry(BaseModel):
@@ -101,7 +101,9 @@ def _read_history() -> list[SessionRecord]:
         try:
             record = SessionRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except (OSError, json.JSONDecodeError, ValidationError) as exc:
-            logger.warning("[read_report_card] skipping unparseable history file %s: %s", path.name, exc)
+            logger.warning(
+                "[read_report_card] skipping unparseable history file %s: %s", path.name, exc
+            )
             continue
         records.append(record)
     records.sort(key=lambda r: (r.date, r.record_id))
@@ -238,7 +240,8 @@ def save_session_results(args: SaveSessionArgs) -> dict[str, object]:
 
     # seq = per-day per-field counter (tool-registry.md side effect 1)
     history = _history_dir()
-    seq = len(list(history.glob(f"{record.date}-{record.field}-*.json"))) + 1 if history.is_dir() else 1
+    glob_pattern = f"{record.date}-{record.field}-*.json"
+    seq = len(list(history.glob(glob_pattern))) + 1 if history.is_dir() else 1
     if not _write_with_retry(
         history / f"{record.date}-{record.field}-{seq}.json",
         record.model_dump_json(indent=2),
@@ -256,13 +259,16 @@ def save_session_results(args: SaveSessionArgs) -> dict[str, object]:
     except _CorruptCard:
         # history file is kept (append-only audit + recovery source); card heal lands
         # with the next successful save, which rebuilds scores from history
-        logger.error("[save_session_results] report-card.json missing or corrupt — card not updated")
+        logger.error(
+            "[save_session_results] report-card.json missing or corrupt — card not updated"
+        )
         return {"ok": False}
     entry = card.fields.get(record.field) or _FieldEntry(scores=[])
     entry.scores = scores
     entry.trend = verdict
     card.fields[record.field] = entry
-    if not _write_with_retry(_card_path(), card.model_dump_json(indent=2), tool="save_session_results"):
+    card_json = card.model_dump_json(indent=2)
+    if not _write_with_retry(_card_path(), card_json, tool="save_session_results"):
         return {"ok": False}
     return verdict.model_dump()
 
