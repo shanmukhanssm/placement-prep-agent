@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase:** Phase 0 — Skeleton (not started)
-**Last completed:** none (bootstrap — context files written, no code yet)
-**Next:** 0.1 Main-Graph Skeleton (Phase 0.1)
+**Phase:** Phase 0 — Skeleton (0.1 done, 0.2 next)
+**Last completed:** 0.1 Main-Graph Skeleton (Stubs) — 2026-09-13
+**Next:** 0.2 Subgraph Skeletons (Phase 0.2)
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### Phase 0 — Skeleton
 
-- [ ] 0.1 Main-Graph Skeleton (Stubs)
+- [x] 0.1 Main-Graph Skeleton (Stubs)
 - [ ] 0.2 Subgraph Skeletons (Stubs)
 
 ### Phase 1 — Tools
@@ -67,7 +67,9 @@
 
 | Date | Feature | Layer (static/unit/integration/e2e/eval) | Result | Notes |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | static | PASS | `ruff check .` clean · `mypy --strict src` clean (17 files) |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | e2e | PASS | `tests/e2e/test_skeleton_e2e.py` — 6-turn scripted conversation (onboarding→dsa start→attempt→give-up wrap→progress→exit) green; all route families exercised incl. session_active pin; 2 passed |
+| 2026-09-13 | 0.1 Main-Graph Skeleton | e2e (manual) | PASS | `python -m prep_agent` on the scripted turns — every turn printed a reply; graph loads with all 10 nodes for Studio (`prep_agent.graph:graph`)
 
 ---
 
@@ -75,7 +77,7 @@
 
 | Phase gate | Result | Date | Evidence (commit / test run) |
 | --- | --- | --- | --- |
-| Phase 0 — Skeleton | | | |
+| Phase 0 — Skeleton | 0.1 gate PASSED (0.2 pending) | 2026-09-13 | tests/e2e/test_skeleton_e2e.py · ruff + mypy --strict + pytest green |
 | Phase 1 — Tools | | | |
 | Phase 2 — Subgraphs | | | |
 | Phase 3 — Main Graph | | | |
@@ -88,17 +90,20 @@
 
 | Feature | Skills used | Overrides / technique changes |
 | --- | --- | --- |
-| | | |
+| 0.1 Main-Graph Skeleton | `langgraph-builder` (primary) + `ponytail` (governing) | none — skill workflow followed; langgraph-builder Step 2–6 checklist applied to stub graph |
 
 ---
 
 ## Caveats Learned
 
-*(empty — append one line per caveat; bugs found and skill gaps/conflicts are also recorded here per AGENTS.md, so they surface at review instead of becoming folklore)*
+- **`SqliteSaver` serializer kwarg is `serde`, not `serializer`** (langgraph 1.2.11) — and pydantic models stored in checkpoints need an explicit msgpack allowlist or every round-trip warns "Deserializing unregistered type" (becomes a hard block in a future version). Encapsulated in `graph.make_sqlite_checkpointer`; recorded in library-docs.md.
+- **`config.py` reads `LLM_API_KEY` with an empty-string default in Phase 0** (docs show hard-required `os.environ[...]`) — deliberate: stubs never call the LLM and tests stay hermetic. Phase 3.1 must enforce the key (fail fast in `get_llm` when an LLM role is requested) and this caveat retires.
 
 ---
 
 ## Notes
+
+- **Feature 0.1 (2026-09-13):** full main-graph skeleton green end-to-end — 10 stub nodes + 3-edge-family conditional wiring per graph-design.md; `MainState` field-for-field; SQLite checkpointer with allowlisted serializer; stub tools match registry signatures. Gate: `skeleton runs e2e on fake scripted conversation` PASSED. Notable test: turn-3 attempt message carries no dsa keywords and still routes to `dsa_session` — proves the `session_active` pin. Registries updated: `tool-registry.md` (stub note), `library-docs.md` (version pins + serde sharp edge). Caveat: Phase 3.1 must enforce `LLM_API_KEY`.
 
 *(append one block per completed feature, newest first — expected format:)*
 
