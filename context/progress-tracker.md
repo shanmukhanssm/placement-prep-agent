@@ -6,9 +6,9 @@
 
 ## Current Status
 
-**Phase:** Phase 0 — Skeleton (0.1 done, 0.2 next)
-**Last completed:** 0.1 Main-Graph Skeleton (Stubs) — 2026-09-13
-**Next:** 0.2 Subgraph Skeletons (Phase 0.2)
+**Phase:** Phase 0 — Skeleton COMPLETE (gate passed)
+**Last completed:** 0.2 Subgraph Skeletons (Stubs) — 2026-09-13
+**Next:** 1.1 Real Tools + Trend Math (Phase 1)
 
 ---
 
@@ -17,7 +17,7 @@
 ### Phase 0 — Skeleton
 
 - [x] 0.1 Main-Graph Skeleton (Stubs)
-- [ ] 0.2 Subgraph Skeletons (Stubs)
+- [x] 0.2 Subgraph Skeletons (Stubs)
 
 ### Phase 1 — Tools
 
@@ -70,6 +70,9 @@
 | 2026-09-13 | 0.1 Main-Graph Skeleton | static | PASS | `ruff check .` clean · `mypy --strict src` clean (17 files) |
 | 2026-09-13 | 0.1 Main-Graph Skeleton | e2e | PASS | `tests/e2e/test_skeleton_e2e.py` — 6-turn scripted conversation (onboarding→dsa start→attempt→give-up wrap→progress→exit) green; all route families exercised incl. session_active pin; 2 passed |
 | 2026-09-13 | 0.1 Main-Graph Skeleton | e2e (manual) | PASS | `python -m prep_agent` on the scripted turns — every turn printed a reply; graph loads with all 10 nodes for Studio (`prep_agent.graph:graph`)
+| 2026-09-13 | 0.2 Subgraph Skeletons | static | PASS | `ruff check .` clean · `mypy --strict src` clean (18 files) |
+| 2026-09-13 | 0.2 Subgraph Skeletons | unit | PASS | `tests/subgraphs/` — dsa: 3 termination paths (pass 85 / give-up / forced stop at 3) + selector; comm & core: wrap at 8 + hard stop at 10; boundary wrapper preserves sibling namespaces and rejects unknown keys (extra=forbid); 13 passed total |
+| 2026-09-13 | 0.2 Subgraph Skeletons | e2e (regression) | PASS | 0.1 skeleton e2e + CLI scripted run unchanged through the subgraph swap |
 
 ---
 
@@ -77,7 +80,7 @@
 
 | Phase gate | Result | Date | Evidence (commit / test run) |
 | --- | --- | --- | --- |
-| Phase 0 — Skeleton | 0.1 gate PASSED (0.2 pending) | 2026-09-13 | tests/e2e/test_skeleton_e2e.py · ruff + mypy --strict + pytest green |
+| Phase 0 — Skeleton | PASSED (0.1 + 0.2 gates) | 2026-09-13 | tests/e2e/test_skeleton_e2e.py + tests/subgraphs/ · ruff + mypy --strict + pytest green · ADR bake-off re-checked (see Notes) |
 | Phase 1 — Tools | | | |
 | Phase 2 — Subgraphs | | | |
 | Phase 3 — Main Graph | | | |
@@ -91,6 +94,7 @@
 | Feature | Skills used | Overrides / technique changes |
 | --- | --- | --- |
 | 0.1 Main-Graph Skeleton | `langgraph-builder` (primary) + `ponytail` (governing) | none — skill workflow followed; langgraph-builder Step 2–6 checklist applied to stub graph |
+| 0.2 Subgraph Skeletons | `langgraph-builder` (primary) + `ponytail` (governing) | none — skill's subgraph-as-node + dict-boundary guidance followed; templates.md/state-and-reducers.md sharp edges applied (no shared state by reference, boundary key validation) |
 
 ---
 
@@ -98,12 +102,16 @@
 
 - **`SqliteSaver` serializer kwarg is `serde`, not `serializer`** (langgraph 1.2.11) — and pydantic models stored in checkpoints need an explicit msgpack allowlist or every round-trip warns "Deserializing unregistered type" (becomes a hard block in a future version). Encapsulated in `graph.make_sqlite_checkpointer`; recorded in library-docs.md.
 - **`config.py` reads `LLM_API_KEY` with an empty-string default in Phase 0** (docs show hard-required `os.environ[...]`) — deliberate: stubs never call the LLM and tests stay hermetic. Phase 3.1 must enforce the key (fail fast in `get_llm` when an LLM role is requested) and this caveat retires.
+- **LangGraph silently DROPS unknown keys from node returns and invoke inputs** (verified on 1.2.11) — so `extra="forbid"` on the sub-states is what makes typo'd namespace keys fail loudly, but only at the wrapper's `model_validate` call. Never move the boundary mapping to raw dict pass-through.
+- **Conditional-edge path maps must contain an `END: END` entry whenever the router can return END** — a router returning a key missing from the map raises `KeyError: '__end__'` mid-run (hit in 0.2, fixed same commit).
 
 ---
 
 ## Notes
 
+- **Feature 0.2 (2026-09-13):** three compiled specialist subgraphs (dsa/comm/core) with typed sub-states (ProblemSpec, DsaState, CommState, CoreState — `extra="forbid"`), stub phase machines with hardcoded transitions (dsa: select → awaiting_attempt → wrap → done with pass/give-up/max-attempts; comm/core: ask ⇄ judge, wrap at 8, hard stop at 10), and dict-based boundary wrappers deriving `session_active`. Gate: `each subgraph runs green in isolation on scripted fake turns` PASSED (incl. sibling-namespace preservation + unknown-key rejection). Registries updated: `graph-design.md` (sub-states gained user_message/assistant_message — same-commit drift fix; boundary wrapper contract documented). Caveat: none new.
 - **Feature 0.1 (2026-09-13):** full main-graph skeleton green end-to-end — 10 stub nodes + 3-edge-family conditional wiring per graph-design.md; `MainState` field-for-field; SQLite checkpointer with allowlisted serializer; stub tools match registry signatures. Gate: `skeleton runs e2e on fake scripted conversation` PASSED. Notable test: turn-3 attempt message carries no dsa keywords and still routes to `dsa_session` — proves the `session_active` pin. Registries updated: `tool-registry.md` (stub note), `library-docs.md` (version pins + serde sharp edge). Caveat: Phase 3.1 must enforce `LLM_API_KEY`.
+- **ADR-001 framework bake-off re-check (dated, per Phase 0 checkpoint):** 2026-09-13, against the running skeleton. Turn-based invocation + checkpointed threads + conditional-edge routing + compiled-subgraphs-as-nodes all behaved per graph-design.md; the one engine surprise (serde allowlist) was contained in one factory. No mismatch with ADR-001's assumptions — LangGraph stays; bake-off closed, no re-check owed.
 
 *(append one block per completed feature, newest first — expected format:)*
 

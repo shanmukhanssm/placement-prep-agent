@@ -34,7 +34,7 @@
                     END   (next user message → START again)
 ```
 
-Specialist subgraphs (compiled, added as one node each):
+Specialist subgraphs (compiled, added as one node each — the parent node is a thin boundary wrapper that maps `session_data["dsa" | "communication" | "core_subject"]` ⇄ the typed sub-state (dict-based; sub-states set `extra="forbid"` so a typo'd key fails loudly instead of silently resetting the machine) and invokes the compiled subgraph. The wrapper derives `session_active` from the sub-state: set to the specialist's field while the session is live (`phase != done`), cleared on completion (`phase == done`) — implementing the "cleared in wrap" rule below):
 
 ```
 dsa_session SUBGRAPH            comm_session SUBGRAPH          core_session SUBGRAPH
@@ -167,21 +167,21 @@ class MainState(BaseModel):
 - **Failure:** LLM failure → falls back to a templated greeting built from the same numbers (code, no LLM).
 
 ### `dsa_session` (subgraph)
-- **Sub-state:** `DsaState {phase: select|awaiting_attempt|wrap|done, problem: ProblemSpec|None, attempts: list[str], attempt_count: int, final_score: float, gave_up: bool}`.
+- **Sub-state:** `DsaState {phase: select|awaiting_attempt|wrap|done, user_message: str, assistant_message: str, problem: ProblemSpec|None, attempts: list[str], attempt_count: int, final_score: float, gave_up: bool}` — `user_message`/`assistant_message` were added in Phase 0.2 (same-commit registry update) so a specialist turn is self-contained at the subgraph boundary; all sub-states set `extra="forbid"` (boundary validation guard).
 - **`selector`** (phase=select, fires on session start turn): picks one problem (topic rotation informed by weak areas + least-recently-asked via report-card history), asks the user "walk me through your algorithm". Sets phase=awaiting_attempt. One problem per session (owner decision).
 - **`evaluator`** (phase=awaiting_attempt, fires on each attempt turn): grades the proposed algorithm against the optimized approach → structured `AttemptVerdict {optimality_pct 0-100, faults: list[str], pass: bool (≥80), feedback}`. If pass or `attempt_count ≥ 3` or user explicitly gives up → phase=wrap; else feedback + "try again" (ask for another algorithm, explaining the faults).
 - **`dsa_wrap`**: final_score = best optimality_pct achieved (give-up scores the best attempt as-is; the record notes give-up); writes one `SessionRecord` via `save_session_results`; gives a short honest summary; sets `session_active=""`, phase=done.
 - **Failure:** judge validation failure after one retry → evaluator returns a conservative `optimality_pct=0` attempt verdict with feedback "explain it differently"; the loop stays bounded.
 
 ### `comm_session` (subgraph)
-- **Sub-state:** `CommState {phase: ask|wrap|done, question_count: int (1..10), current_question: str|None, q_and_a: list[QuestionRecord]}`.
+- **Sub-state:** `CommState {phase: ask|wrap|done, user_message: str, assistant_message: str, question_count: int (1..10), current_question: str|None, q_and_a: list[QuestionRecord]}` — same Phase 0.2 turn-boundary fields and `extra="forbid"` rule as DsaState.
 - **`interviewer`**: HR/behavioral persona; asks exactly one question per turn — one-liners ("introduce yourself") or situational ("tell me about a time…"); **never subject questions** (DSA/tech theory belongs to core_session). Question count target 8–10 (examiner stops at ≥8 when answers run thin, hard stop at 10).
 - **`comm_judge`**: scores each answer 0–10 against the rubric (structure, clarity, relevance, confidence — see prompt-registry); appends `QuestionRecord`; hands back to interviewer.
 - **`comm_wrap`**: score = mean × 10 (normalized to 0–100); writes `SessionRecord`; brief encouraging summary with 1–2 concrete improvement points; `session_active=""`.
 - **Failure:** judge failure after one retry → that answer gets `score=None` and is excluded from the average (recorded with verdict "un-scored"); session continues.
 
 ### `core_session` (subgraph)
-- **Sub-state:** `CoreState` — same shape as `CommState` plus `topic` pointer (rotates through the chosen `profile.core_subject` syllabus + DSA-theory mix).
+- **Sub-state:** `CoreState` — same shape as `CommState` (incl. the Phase 0.2 turn-boundary fields) plus `topic` pointer (rotates through the chosen `profile.core_subject` syllabus + DSA-theory mix).
 - **`examiner`**: asks subject questions AND DSA-theory questions (e.g. "what is a greedy algorithm") on the chosen core subject; one per turn; 8–10 questions.
 - **`core_judge`**: 0–10 per answer against subject rubric (correctness, completeness, terminology).
 - **`core_wrap`**: score = mean × 10; writes `SessionRecord`; summary naming the 2 weakest topics for next time; `session_active=""`.
