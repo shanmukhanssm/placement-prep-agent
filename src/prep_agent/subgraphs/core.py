@@ -93,9 +93,7 @@ def _pick_topic(state: CoreState, track: str) -> str:
     approximation for the spaced re-test exception; documented in progress-tracker)."""
     topics = [name for name, _ in _syllabus(state, track)]
     history = [
-        r
-        for r in (read_report_card().recent_history or [])
-        if r.get("field") == "core_subject"
+        r for r in (read_report_card().recent_history or []) if r.get("field") == "core_subject"
     ]
     last_served: dict[str, str] = {}  # topic → newest record date (history is newest-first)
     for record in history:
@@ -139,7 +137,12 @@ def examiner(state: CoreState) -> dict[str, Any]:
     """Ask exactly ONE viva question per turn — track/topic/level decided in code."""
     question_no = state.question_count + 1
     if question_no > SESSION_MAX_QUESTIONS:  # defensive — routing normally wraps first
-        return {"phase": "wrap", "assistant_message": ""}
+        return {
+            "phase": "wrap",
+            "assistant_message": (
+                "That viva is complete — say the word and I'll start a fresh one."
+            ),
+        }
     track = "dsa_theory" if question_no in dsa_theory_positions(SESSION_MAX_QUESTIONS) else "core"
     topic = _pick_topic(state, track)
     ceiling = dict(_syllabus(state, track))[topic]
@@ -165,8 +168,12 @@ def examiner(state: CoreState) -> dict[str, Any]:
         turn_directive=turn_directive,
     )
     turn = call_structured("core_examiner", QuizQuestion, prompt)
-    question = turn.question.strip() if turn is not None and turn.question.strip() else (
-        f"Question: explain {topic} in your own words."  # deterministic fallback
+    question = (
+        turn.question.strip()
+        if turn is not None and turn.question.strip()
+        else (
+            f"Question: explain {topic} in your own words."  # deterministic fallback
+        )
     )
     points = (
         [p.strip() for p in turn.expected_answer_points if p.strip()]
@@ -174,7 +181,7 @@ def examiner(state: CoreState) -> dict[str, Any]:
         else [ceiling]
     )
     logger.info("[examiner] Q%d track=%s topic=%s", question_no, track, topic)
-    return {
+    update: dict[str, Any] = {
         "phase": "ask",
         "question_count": question_no,
         "current_question": question,
@@ -182,6 +189,9 @@ def examiner(state: CoreState) -> dict[str, Any]:
         "expected_points": [*state.expected_points, points],
         "assistant_message": question,
     }
+    if question_no == 1 and not state.started_at:  # §6: duration from the opening turn
+        update["started_at"] = datetime.now().isoformat()
+    return update
 
 
 def core_judge(state: CoreState) -> dict[str, Any]:
@@ -201,10 +211,19 @@ def core_judge(state: CoreState) -> dict[str, Any]:
                     "Come back for a full viva whenever you're ready."
                 ),
             }
-        return {  # stay: re-present the current question without consuming anything
+        # stay. Two confirm sources exist (H9): a quit confirm — the current question was
+        # never answered, so re-present it (probe; next message re-enters the judge) —
+        # and a 3-skip check-in — that question was already consumed as "skipped", so
+        # hand the turn back to the examiner for the NEXT question instead.
+        question_pending = state.question_count > len(state.q_and_a)
+        return {
             "quit_pending": False,
-            "phase": "probe",  # question stays current; next message re-enters the judge
-            "assistant_message": f"Noted, we continue. {state.current_question or ''}".strip(),
+            "phase": "probe" if question_pending else "ask",
+            "assistant_message": (
+                f"Noted, we continue. {state.current_question or ''}".strip()
+                if question_pending
+                else "Noted — on with the next question."
+            ),
         }
 
     if low in _QUIT_PHRASES or (len(low) <= 40 and "end the" in low):
@@ -217,9 +236,9 @@ def core_judge(state: CoreState) -> dict[str, Any]:
         }
 
     if low in _SKIP_PHRASES and state.current_question:
-        consecutive = sum(
-            1 for q in reversed(state.q_and_a) if q.verdict == "skipped by student"
-        ) + 1
+        consecutive = (
+            sum(1 for q in reversed(state.q_and_a) if q.verdict == "skipped by student") + 1
+        )
         record = QuestionRecord(
             question=state.current_question, verdict="skipped by student", score=0.0
         )
@@ -228,10 +247,20 @@ def core_judge(state: CoreState) -> dict[str, Any]:
                 "quit_pending": True,
                 "q_and_a": [*state.q_and_a, record],
                 "topics_asked": [*state.topics_asked, state.topic],
-                "expected_points": [*state.expected_points, []],
+                "answer_buffer": "",  # H8: the skipped question is consumed — drop partials
+                "probed_current": False,
                 "assistant_message": "Shall we continue? (yes / no)",
             }
-        return {"q_and_a": [*state.q_and_a, record]}
+        # H1: the skipped question WAS asked (§7), so its topic must be recorded too —
+        # len(topics_asked) == len(q_and_a) is the wrap-table / weakest-topics invariant
+        # (examiner appends expected_points at ask time; judge appends topics at judge time).
+        # H8: also drop any probed partial answer — it belonged to the skipped question.
+        return {
+            "q_and_a": [*state.q_and_a, record],
+            "topics_asked": [*state.topics_asked, state.topic],
+            "answer_buffer": "",
+            "probed_current": False,
+        }
 
     answer = f"{state.answer_buffer}\n{message}".strip()
     question_no = state.question_count
@@ -390,6 +419,7 @@ def core_wrap(state: CoreState) -> dict[str, Any]:
         if points:
             lines.append(f"{idx}. " + "; ".join(points))
     if weakest:
+
         def _topic_mean(topic: str) -> float:
             marks = [
                 q.score
@@ -398,9 +428,7 @@ def core_wrap(state: CoreState) -> dict[str, Any]:
             ]
             return sum(marks) / len(marks) if marks else 0.0
 
-        named = ", ".join(
-            f"{t} (keep sharp)" if _topic_mean(t) >= 8 else t for t in weakest
-        )
+        named = ", ".join(f"{t} (keep sharp)" if _topic_mean(t) >= 8 else t for t in weakest)
         lines.append(f"Weakest topics — revise these next: {named}.")
     if unscored_n:
         lines.append(
@@ -433,9 +461,22 @@ def core_wrap(state: CoreState) -> dict[str, Any]:
 
 
 def route_entry(state: CoreState) -> str:
-    """An unjudged answer exists iff more questions were asked than judged."""
+    """An unjudged answer exists iff more questions were asked than judged.
+
+    A pending ``quit_pending`` (H9) must resolve in ``core_judge`` — routing the
+    confirm answer to the examiner would drop it and misread the next real answer
+    containing "yes" as a phantom quit. A stale ``phase == "done"`` on ENTRY means
+    re-invocation after a wrapped viva (H7): route to the examiner so a fresh viva
+    starts instead of END-ing into a replayed debrief. The parent wrapper
+    (``core_session``) owns the FULL namespace reset — question_count/q_and_a/
+    topics_asked are wiped there — so this guard only keeps direct subgraph
+    invocations alive; with a fully stale state the examiner asks Q(N+1), which is
+    the documented defense-in-depth behavior.
+    """
+    if state.quit_pending:
+        return "core_judge"  # H9: the yes/no confirm belongs to the judge, not the examiner
     if state.phase == "done":
-        return END
+        return "examiner"  # H7: re-entry after a wrapped session — start a fresh viva
     if state.phase == "wrap":
         return "core_wrap"
     if state.question_count > len(state.q_and_a):
@@ -469,8 +510,17 @@ core_app = build_core_graph()  # compiled once; independently invokable (eval is
 
 def core_session(state: MainState) -> dict[str, Any]:
     """Parent boundary: session_data["core_subject"] ⇄ CoreState, invoke the compiled
-    subgraph. Injects the chosen core_subject + weak areas (topology table inputs)."""
+    subgraph. Injects the chosen core_subject + weak areas (topology table inputs).
+
+    Re-entry after a completed session (H7): a stored namespace with ``phase ==
+    "done"`` is discarded so the next "let's do core again" starts a FRESH viva
+    (question_count/q_and_a/topics_asked reset) instead of END-ing on the stale
+    debrief — the wrapper owns the reset; ``route_entry`` only guards direct
+    subgraph invocations.
+    """
     ns = state.session_data.get("core_subject") or {}
+    if ns.get("phase") == "done":  # re-entry after a wrapped session → start FRESH (H7)
+        ns = {}
     sub_state = CoreState.model_validate(
         {
             **ns,

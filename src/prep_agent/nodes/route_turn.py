@@ -5,6 +5,11 @@ one validation retry) lands in Phase 3.1. The decision ORDER is already final he
 is the guard library-docs.md flags: session_active pin → profile gate → classify.
 Low confidence normalizes to smalltalk INSIDE the node so the conditional edge stays a
 pure string match.
+
+The stub classifier scores every intent by the SUM of its keyword lengths present in
+the message and picks the highest (H4 fix): first-match dict order let "problem" (dsa)
+beat "communication" in "I have a communication problem". Longest-keyword-sum scoring
+is deterministic and order-independent.
 """
 
 from typing import Any
@@ -32,8 +37,14 @@ def route_turn(state: MainState) -> dict[str, Any]:
         return {"intent": state.session_active}
     if not state.has_profile:
         return {"intent": "onboarding"}
-    text = state.user_message.lower()
+    return {"intent": _classify(state.user_message.lower())}
+
+
+def _classify(text: str) -> str:
+    """Stub classifier: longest-keyword-sum scoring beats dict-order misroutes (H4)."""
+    best_intent, best_score = "smalltalk", 0
     for intent, keywords in _STUB_KEYWORDS.items():
-        if any(k in text for k in keywords):
-            return {"intent": intent}
-    return {"intent": "smalltalk"}  # stub fallback = the clarify bucket
+        score = sum(len(k) for k in keywords if k in text)
+        if score > best_score:
+            best_intent, best_score = intent, score
+    return best_intent

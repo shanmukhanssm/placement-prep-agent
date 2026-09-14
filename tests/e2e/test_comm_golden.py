@@ -35,8 +35,14 @@ def _question(no: int) -> dict[str, str]:
 
 
 def _score(n: int) -> dict[str, object]:
-    return {"score": n, "structure": n, "clarity": n, "relevance": n, "confidence": n,
-            "verdict": f"Solid at {n} — quantify the result next time."}
+    return {
+        "score": n,
+        "structure": n,
+        "clarity": n,
+        "relevance": n,
+        "confidence": n,
+        "verdict": f"Solid at {n} — quantify the result next time.",
+    }
 
 
 @pytest.mark.e2e
@@ -48,8 +54,15 @@ def test_comm_golden_session(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [
         {"message": f"step {i}", "extracted": extraction}
         for i, extraction in enumerate(
-            [{}, {"name": "Arjun"}, {"degree_branch": "B.Tech CSE"}, {"grad_year": "2027"},
-             {"target_roles": "SDE"}, {"weak_areas": "arrays"}, {"core_subject": "aiml"}]
+            [
+                {},
+                {"name": "Arjun"},
+                {"degree_branch": "B.Tech CSE"},
+                {"grad_year": "2027"},
+                {"target_roles": "SDE"},
+                {"weak_areas": "arrays"},
+                {"core_subject": "aiml"},
+            ]
         )
     ]
     for message in ONBOARDING_ANSWERS:

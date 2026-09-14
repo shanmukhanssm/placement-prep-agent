@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from prep_agent.subgraphs.comm import comm_app
+from prep_agent.state import MainState
+from prep_agent.subgraphs.comm import comm_app, comm_session
 from prep_agent.subgraphs.state import CommState
 
 LONG_ANSWER = (
@@ -31,7 +32,10 @@ def _score(n: int, verdict: str = "Clear arc; land the result harder.") -> dict[
 
 def _question(no: int, kind: str | None = None) -> dict[str, str]:
     kinds = {1: "intro", 8: "curveball", 9: "closing", 10: "closing"}
-    return {"question": f"Question {no}: tell me more about your work.", "kind": kind or kinds.get(no, "behavioral")}
+    return {
+        "question": f"Question {no}: tell me more about your work.",
+        "kind": kind or kinds.get(no, "behavioral"),
+    }
 
 
 def _invoke(state: CommState, message: str) -> CommState:
@@ -88,7 +92,9 @@ def test_comm_full_session_wraps_at_ten(llm_queues, seeded_card):
 @pytest.mark.unit
 def test_comm_judge_failure_excluded_from_mean(llm_queues, seeded_card):
     state = _invoke(CommState(), "start the round")  # Q1
-    llm_queues["comm_judge"] = [Exception("boom"), Exception("boom")] + [_score(8) for _ in range(9)]
+    llm_queues["comm_judge"] = [Exception("boom"), Exception("boom")] + [
+        _score(8) for _ in range(9)
+    ]
     llm_queues["comm_interviewer"] = [_question(n) for n in range(1, 11)]
     llm_queues["comm_wrap"] = ["80/100 across 9 scored answers."]
     state = _invoke(state, LONG_ANSWER)  # judge fails twice → un-scored, session continues
@@ -203,3 +209,94 @@ def test_comm_hard_stop_never_exceeds_ten(llm_queues, seeded_card):
     assert state.question_count == 10 and state.closing_asked
     state = _invoke(state, LONG_ANSWER)  # judge #10 → hard stop
     assert state.phase == "done" and len(state.q_and_a) == 10
+
+
+@pytest.mark.unit
+def test_h6_skip_budget_two_honored_third_refused(llm_queues, seeded_card):
+    """H6: ≤2 skips honored (§5) — a 3rd skip keeps the question pending, no record."""
+    llm_queues["comm_interviewer"] = [_question(n) for n in range(1, 5)]
+    state = _invoke(CommState(), "start the round")  # Q1
+    state = _invoke(state, "skip")  # skip 1 — honored, 0.0 recorded, next question
+    state = _invoke(state, "skip")  # skip 2 — honored, 0.0 recorded, next question
+    assert state.question_count == 3 and len(state.q_and_a) == 2
+    assert all(q.verdict.startswith("Skipped at student request") for q in state.q_and_a)
+    assert all(q.score == 0.0 for q in state.q_and_a)
+    refused = _invoke(state, "skip")  # 3rd request — budget exhausted (H6), no new record
+    assert refused.phase == "probe" and len(refused.q_and_a) == 2
+    assert refused.question_count == 3 and refused.current_question == state.current_question
+    assert "answer" in refused.assistant_message.lower()  # asked for an actual answer
+    llm_queues["comm_judge"] = [_score(7)]
+    judged = _invoke(refused, LONG_ANSWER)  # a real answer is then judged normally
+    assert judged.phase == "ask" and len(judged.q_and_a) == 3
+    assert judged.q_and_a[-1].score == 7.0
+
+
+@pytest.mark.unit
+def test_h6_skip_records_counted_in_mean(llm_queues, seeded_card):
+    """H6: honored skips score 0.0, appear in the record, and count in the mean (§5)."""
+    llm_queues["comm_interviewer"] = [_question(n) for n in range(1, 11)]
+    llm_queues["comm_judge"] = [_score(8)] * 8
+    llm_queues["comm_wrap"] = ["62/100 across 9 answers."]
+    state = _invoke(CommState(), "start the round")  # Q1
+    state = _invoke(state, "skip")  # skip 1 → 0.0
+    state = _invoke(state, LONG_ANSWER)  # Q2 judged 8
+    state = _invoke(state, "skip")  # skip 2 → 0.0
+    for _ in range(6):
+        state = _invoke(state, LONG_ANSWER)  # Q4..Q9 — H6: skip budget exhausted, so at
+        # count>=8 the closing becomes eligible (§5 skips push toward wrap): Q9 IS the
+        # closing reverse question, and its answer wraps the session at 9 records.
+    assert state.phase == "done" and len(state.q_and_a) == 9
+    record = _history_records()[0]
+    skipped = [
+        q for q in record["questions"] if q["verdict"].startswith("Skipped at student request")
+    ]
+    assert len(skipped) == 2 and all(q["score"] == 0.0 for q in skipped)
+    assert record["score"] == 62.2  # (0 + 0 + 8×7) / 9 × 10 — skips are IN the mean (§5)
+
+
+@pytest.mark.unit
+def test_h3_reentry_after_done_starts_fresh_round(llm_queues, seeded_card):
+    """H3: after a wrapped session, re-entry starts a NEW round — no stale wrap replay."""
+    state = _invoke(CommState(), "start the round")  # Q1
+    done = _invoke(state, "stop")  # quit with 0 answered → done goodbye, nothing recorded
+    stale_wrap = done.assistant_message
+    assert done.phase == "done" and done.q_and_a == [] and _history_records() == []
+    llm_queues["comm_interviewer"] = [{"question": "Tell me about yourself.", "kind": "intro"}]
+    parent = MainState.model_validate(
+        {
+            "session_data": {"communication": done.model_dump()},
+            "user_message": "let's practice again",
+        }
+    )
+    result = comm_session(parent)  # the parent wrapper owns the H3 namespace reset
+    assert result["session_active"] == "communication"
+    assert result["assistant_message"] != stale_wrap  # the stale wrap is NOT replayed
+    ns = result["session_data"]["communication"]
+    assert ns["phase"] == "ask" and ns["question_count"] == 1 and ns["q_and_a"] == []
+    assert ns["current_question"] == result["assistant_message"] == "Tell me about yourself."
+    assert ns["kinds"] == ["intro"]  # the intro arc (Q1) is asked — a genuinely new round
+
+
+@pytest.mark.unit
+def test_h8_skip_after_probe_resets_buffer_and_probe_budget(llm_queues, seeded_card):
+    """H8: a skip consumes the pending question — the probed partial answer and the
+    per-question probe budget must NOT leak into the next question's judgment."""
+    llm_queues["comm_interviewer"] = [_question(1), _question(2)]
+    state = _invoke(CommState(), "start the round")  # Q1 (started_at set on first ask, §6)
+    assert state.started_at
+    llm_queues["comm_judge"] = [
+        # comm probes are MECHANICAL (word count, no LLM call) — the queue only needs
+        # the score for the post-skip question: judged on ITS answer alone, nothing leaked
+        _score(9),
+    ]
+    probed = _invoke(state, "short answer")  # ≤10 words → probe
+    assert probed.phase == "probe" and probed.answer_buffer == "short answer"
+    assert probed.probes_on_current == 1
+    skipped = _invoke(probed, "skip")  # skip the probed question
+    assert skipped.q_and_a[-1].verdict.startswith("Skipped at student request")
+    assert skipped.answer_buffer == "" and skipped.probes_on_current == 0  # H8 resets
+    judged = _invoke(
+        skipped, "a completely fresh full answer for question two with many more words"
+    )  # >10 words — must be JUDGED (score 9), not probed again on leaked budget
+    assert judged.q_and_a[-1].score == 9.0
+    assert judged.probes_on_current == 0

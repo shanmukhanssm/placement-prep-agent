@@ -34,16 +34,25 @@ POST_TURNS: list[tuple[str, dict]] = [
 @pytest.mark.e2e
 def test_skeleton_e2e_scripted_conversation(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [dict(t) for _, t in ONBOARDING_TURNS]
-    llm_queues["dsa_selector"] = [{
-        "statement": "Given an array and a target, return two indices summing to it.",
-        "title": "x", "topic": "arrays", "difficulty": "easy",
-        "optimized_approach": "x", "edge_cases": [],
-    }]
-    llm_queues["dsa_evaluator"] = [{
-        "optimality_pct": 55, "faults": ["brute-force-when-better-exists"],
-        "feedback": "Attempt 1: 55/100 — not a pass.", "is_attempt": True,
-        "mechanism": "brute force",
-    }]
+    llm_queues["dsa_selector"] = [
+        {
+            "statement": "Given an array and a target, return two indices summing to it.",
+            "title": "x",
+            "topic": "arrays",
+            "difficulty": "easy",
+            "optimized_approach": "x",
+            "edge_cases": [],
+        }
+    ]
+    llm_queues["dsa_evaluator"] = [
+        {
+            "optimality_pct": 55,
+            "faults": ["brute-force-when-better-exists"],
+            "feedback": "Attempt 1: 55/100 — not a pass.",
+            "is_attempt": True,
+            "mechanism": "brute force",
+        }
+    ]
     app = build_graph(make_sqlite_checkpointer(str(tmp_path / "cp.sqlite")))
     config = {
         "configurable": {"thread_id": "test:skeleton-e2e"},
@@ -86,7 +95,10 @@ def test_skeleton_e2e_scripted_conversation(llm_queues, tmp_path):
 def test_skeleton_routes_all_intent_branches(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [dict(t) for _, t in ONBOARDING_TURNS]
     app = build_graph(make_sqlite_checkpointer(str(tmp_path / "cp.sqlite")))
-    config = {"configurable": {"thread_id": "test:skeleton-branches"}, "recursion_limit": RECURSION_LIMIT}
+    config = {
+        "configurable": {"thread_id": "test:skeleton-branches"},
+        "recursion_limit": RECURSION_LIMIT,
+    }
 
     # fresh thread, no profile → every message routes to onboarding until it completes
     result = app.invoke({"user_message": "good morning"}, config=config)

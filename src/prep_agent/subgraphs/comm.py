@@ -5,8 +5,9 @@ behavior-comm.md arc (intro → behavioral → situational → strengths/weaknes
 curveball → closing); COMM_JUDGE_V1 (temp 0.2) scores every answer 0-10 with
 structure/clarity/relevance/confidence sub-scores. Flow control per behavior-comm §5
 (code-owned, mechanical): one-word/empty probes (≤2 per question), explicit skips
-(≤2, scored 0.0, counted in the mean), quit (honor immediately — ≥5 answered saves,
-else no record), run-thin early close at ≥8, hard stop at 10. Judge failure after the
+(≤2 honored — further requests keep the question pending; honored skips score 0.0
+and count in the mean), quit (honor immediately — ≥5 answered saves, else no
+record), run-thin early close at ≥8, hard stop at 10. Judge failure after the
 one retry → un-scored exclusion; ALL answers un-scored → no record (§7.8). comm_wrap
 normalizes mean×10, writes one SessionRecord (topic fixed "HR Interview"), and wraps
 with the coach voice (COMM_WRAP_V1, templated fallback).
@@ -119,15 +120,24 @@ def interviewer(state: CommState) -> dict[str, Any]:
     """Ask exactly ONE non-subject question per turn (arc enforced via prompt + code)."""
     question_no = state.question_count + 1
     if question_no > SESSION_MAX_QUESTIONS:  # defensive — routing normally wraps first
-        return {"phase": "wrap", "assistant_message": ""}
+        return {
+            "phase": "wrap",
+            "assistant_message": (
+                "That round is complete — say the word and I'll start a fresh one."
+            ),
+        }
     closing = question_no >= SESSION_MAX_QUESTIONS or (
         state.question_count >= SESSION_MIN_QUESTIONS
         and not state.closing_asked
-        and (_run_thin(state) or _skip_count(state) >= COMM_MAX_SKIPS + 1)
+        # H6: the skip budget caps honored skips at COMM_MAX_SKIPS, so exhaustion of the
+        # budget makes the closing eligible (spec §5: skips push the round toward wrap).
+        and (_run_thin(state) or _skip_count(state) >= COMM_MAX_SKIPS)
     )
     closing_directive = (
         " This turn you MUST ask the closing reverse question: 'Do you have any questions "
-        "for us?' — one line." if closing else ""
+        "for us?' — one line."
+        if closing
+        else ""
     )
     asked = [
         f"Q{i + 1} ({kind}): {q.question[:60]}"
@@ -141,7 +151,9 @@ def interviewer(state: CommState) -> dict[str, Any]:
     asked_summary = ("; ".join(asked) + pending) or "none yet"
     ack = (
         f" The student's previous answer, for at most a one-clause acknowledgment: "
-        f"{state.last_answer[:200]}" if state.last_answer else ""
+        f"{state.last_answer[:200]}"
+        if state.last_answer
+        else ""
     )
     prompt = COMM_INTERVIEWER_V1.format(
         question_no=question_no,
@@ -164,14 +176,17 @@ def interviewer(state: CommState) -> dict[str, Any]:
         "kinds": [*state.kinds, kind],
         "assistant_message": question,
     }
+    if question_no == 1 and not state.started_at:  # §6: duration from the first ask
+        update["started_at"] = datetime.now().isoformat()
     if closing:
         update["closing_asked"] = True
     return update
 
 
 def comm_judge(state: CommState) -> dict[str, Any]:
-    """Score the pending answer, or handle quit/skip/probe mechanically — never ends
-    the turn itself (routing goes to interviewer or comm_wrap, which write the reply)."""
+    """Score the pending answer, or handle quit/skip/probe mechanically. Routing (not
+    this node) continues the turn; probes and the exhausted-skip refusal (H6) write
+    their mechanical line here and route_after_judge ENDs the turn."""
     message = state.user_message.strip()
     low = message.lower()
 
@@ -188,12 +203,28 @@ def comm_judge(state: CommState) -> dict[str, Any]:
         }
 
     if low in _SKIP_PHRASES and state.current_question:
+        if _skip_count(state) >= COMM_MAX_SKIPS:  # skip budget exhausted (§5: ≤2) — H6
+            return {
+                "phase": "probe",  # ends the turn; the same question stays pending
+                "assistant_message": (
+                    "You've used both your skips — I'll need an answer for this one, even a "
+                    "short one, so the session can be scored fairly."
+                ),
+            }
         record = QuestionRecord(
             question=state.current_question,
             verdict="Skipped at student request — not attempted.",
             score=0.0,
         )
-        return {"phase": "ask", "q_and_a": [*state.q_and_a, record], "last_answer": ""}
+        # H8: a skip consumes the pending question — any probed partial answer and the
+        # probe budget belong to the OLD question and must not leak into the next one.
+        return {
+            "phase": "ask",
+            "q_and_a": [*state.q_and_a, record],
+            "last_answer": "",
+            "answer_buffer": "",
+            "probes_on_current": 0,
+        }
 
     answer = f"{state.answer_buffer}\n{message}".strip()
     if not answer:
@@ -356,9 +387,15 @@ def comm_wrap(state: CommState) -> dict[str, Any]:
 
 
 def route_entry(state: CommState) -> str:
-    """An unjudged answer exists iff more questions were asked than judged."""
+    """An unjudged answer exists iff more questions were asked than judged.
+
+    "done" maps to the interviewer (H3): it can only be seen here at invocation START —
+    within a turn, phase becomes "done" only in comm_judge's short-quit path and in
+    comm_wrap, and route_after_judge already ENDs on it — so a re-entry turn after a
+    wrapped session can never silently END on the stale wrap. The parent wrapper
+    (comm_session) owns the full namespace reset that makes the fresh round real."""
     if state.phase == "done":
-        return END
+        return "interviewer"  # re-entry after a wrapped session — start a fresh round (H3)
     if state.phase == "wrap":
         return "comm_wrap"
     if state.question_count > len(state.q_and_a):
@@ -398,8 +435,14 @@ comm_app = build_comm_graph()  # compiled once; independently invokable (eval is
 def comm_session(state: MainState) -> dict[str, Any]:
     """Parent boundary: session_data["communication"] ⇄ CommState, invoke the compiled
     subgraph. Same boundary contract as dsa_session (extra="forbid" validation;
-    session_active derived from phase)."""
+    session_active derived from phase). On re-entry after a wrapped session the
+    wrapper resets the WHOLE namespace back to defaults — q_and_a, question_count,
+    kinds, closing_asked, probes_on_current, answer_buffer and the stale wrap message
+    — so the new round starts from Q1 (H3); route_entry's "done"→interviewer mapping
+    is the defense-in-depth backstop for direct subgraph invocations."""
     ns = state.session_data.get("communication") or {}
+    if ns.get("phase") == "done":  # re-entry after a wrapped session → start FRESH (H3)
+        ns = {}
     digest = ""
     if state.profile:
         digest = (

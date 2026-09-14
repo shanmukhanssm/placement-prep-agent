@@ -57,8 +57,15 @@ def test_core_golden_session(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [
         {"message": f"step {i}", "extracted": extraction}
         for i, extraction in enumerate(
-            [{}, {"name": "Arjun"}, {"degree_branch": "B.Tech CSE"}, {"grad_year": "2027"},
-             {"target_roles": "SDE"}, {"weak_areas": "overfitting"}, {"core_subject": "aiml"}]
+            [
+                {},
+                {"name": "Arjun"},
+                {"degree_branch": "B.Tech CSE"},
+                {"grad_year": "2027"},
+                {"target_roles": "SDE"},
+                {"weak_areas": "overfitting"},
+                {"core_subject": "aiml"},
+            ]
         )
     ]
     for message in ONBOARDING_ANSWERS:
@@ -77,7 +84,9 @@ def test_core_golden_session(llm_queues, tmp_path):
     assert core_ns["question_count"] == 10 and len(core_ns["q_and_a"]) == 10
 
     # DSA-theory mix observable: exactly 3 of 10 (positions 3, 6, 9) — inside the ~30% band
-    theory_positions = [i + 1 for i, t in enumerate(core_ns["topics_asked"]) if t in DSA_THEORY_TOPICS]
+    theory_positions = [
+        i + 1 for i, t in enumerate(core_ns["topics_asked"]) if t in DSA_THEORY_TOPICS
+    ]
     assert theory_positions == [3, 6, 9]
     assert len(set(core_ns["topics_asked"])) == 10  # no topic repeated within the session
 

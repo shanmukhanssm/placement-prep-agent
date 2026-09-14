@@ -18,6 +18,12 @@ LLM_BASE_URL: Final[str] = os.environ.get("LLM_BASE_URL", "https://api.groq.com/
 LLM_API_KEY: Final[str] = os.environ.get("LLM_API_KEY", "")
 # placeholder — owner decision pending
 LLM_MODEL: Final[str] = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
+# Per-request timeout seconds (F2): the openai client default is 600s — two structured
+# attempts on a hung endpoint could stall a turn for many minutes. 60s keeps the worst
+# turn latency bounded (call_structured owns exactly ONE manual retry). The ``or 60``
+# guards against a blank ``LLM_REQUEST_TIMEOUT=`` copied verbatim from .env.example —
+# ``float("")`` would crash every startup at import time.
+LLM_REQUEST_TIMEOUT: Final[float] = float(os.environ.get("LLM_REQUEST_TIMEOUT") or 60)
 
 # per-role temperatures sourced from prompt-registry.md Model Policy — same-commit sync
 ROLE_TEMPERATURE: Final[dict[str, float]] = {
@@ -78,12 +84,21 @@ HISTORY_DIR: Final[str] = "data/history"
 
 
 def get_llm(role: str) -> ChatOpenAI:
-    """Single client factory — model strings and temperatures never appear in node code."""
+    """Single client factory — model strings and temperatures never appear in node code.
+
+    F2: every request is bounded by LLM_REQUEST_TIMEOUT (env-tunable, default 60s) —
+    without it the openai client's 600s default could hang a turn for minutes across
+    call_structured's two attempts. max_retries=0 is DELIBERATE: call_structured owns
+    exactly one manual retry; a client-level retry would silently multiply HTTP
+    attempts beyond the per-turn LLM call budget (prompt-registry.md).
+    """
     return ChatOpenAI(
         base_url=LLM_BASE_URL,
         api_key=LLM_API_KEY,
         model=LLM_MODEL,
         temperature=ROLE_TEMPERATURE[role],
+        timeout=LLM_REQUEST_TIMEOUT,
+        max_retries=0,
     )
 
 

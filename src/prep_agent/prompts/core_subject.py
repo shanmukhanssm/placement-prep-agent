@@ -8,55 +8,134 @@ derivation + the probe exchange for re-scoring + the probe_needed flag).
 """
 
 AIML_SYLLABUS: tuple[tuple[str, str], ...] = (
-    ("supervised vs unsupervised learning", "Define both + one example task each. No semi/self-supervised taxonomy."),
+    (
+        "supervised vs unsupervised learning",
+        "Define both + one example task each. No semi/self-supervised taxonomy.",
+    ),
     ("classification vs regression", "Task type, output type, one example algorithm each."),
-    ("train/test split & cross-validation", "Why split, what the test set must never touch, k-fold idea."),
-    ("overfitting & underfitting", "Symptoms (train high / test low), link to complexity, one cure."),
-    ("bias-variance tradeoff", "Both in words; high-bias ↔ underfit, high-variance ↔ overfit. No decomposition math."),
-    ("accuracy-precision-recall-f1", "Definitions from confusion-matrix counts; when accuracy lies (imbalance)."),
+    (
+        "train/test split & cross-validation",
+        "Why split, what the test set must never touch, k-fold idea.",
+    ),
+    (
+        "overfitting & underfitting",
+        "Symptoms (train high / test low), link to complexity, one cure.",
+    ),
+    (
+        "bias-variance tradeoff",
+        "Both in words; high-bias ↔ underfit, high-variance ↔ overfit. No decomposition math.",
+    ),
+    (
+        "accuracy-precision-recall-f1",
+        "Definitions from confusion-matrix counts; when accuracy lies (imbalance).",
+    ),
     ("confusion matrix", "2×2 layout, TP/FP/TN/FN, read one metric off it."),
-    ("feature engineering & scaling", "What a feature is, why scale, normalization vs standardization intuition."),
-    ("gradient descent & learning rate", "Loss-minimization intuition; effect of too-large/too-small lr."),
-    ("regularization (L1/L2)", "What it does, why it fights overfitting; λ as a 'dial'. No weight-update equations."),
-    ("linear vs logistic regression", "Why logistic for classification; sigmoid squashes to probability. No MLE."),
-    ("decision trees vs random forests", "Split idea (pure leaves), overfitting tendency, why many trees help."),
+    (
+        "feature engineering & scaling",
+        "What a feature is, why scale, normalization vs standardization intuition.",
+    ),
+    (
+        "gradient descent & learning rate",
+        "Loss-minimization intuition; effect of too-large/too-small lr.",
+    ),
+    (
+        "regularization (L1/L2)",
+        "What it does, why it fights overfitting; λ as a 'dial'. No weight-update equations.",
+    ),
+    (
+        "linear vs logistic regression",
+        "Why logistic for classification; sigmoid squashes to probability. No MLE.",
+    ),
+    (
+        "decision trees vs random forests",
+        "Split idea (pure leaves), overfitting tendency, why many trees help.",
+    ),
     ("k-NN", "How prediction happens, effect of k, why scaling matters."),
-    ("k-means clustering", "Unsupervised, centroid-update loop, choosing k (elbow by name). No convergence proof."),
-    ("neural network basics", "Layers, weights, purpose of activation; perceptron as building block. No backprop derivation."),
-    ("CNN vs RNN basics", "What data each suits (images vs sequences) and the intuition why. No architecture detail."),
+    (
+        "k-means clustering",
+        "Unsupervised, centroid-update loop, choosing k (elbow by name). No convergence proof.",
+    ),
+    (
+        "neural network basics",
+        "Layers, weights, purpose of activation; perceptron as building block. No backprop derivation.",
+    ),
+    (
+        "CNN vs RNN basics",
+        "What data each suits (images vs sequences) and the intuition why. No architecture detail.",
+    ),
 )
 
 CYBER_SYLLABUS: tuple[tuple[str, str], ...] = (
     ("CIA triad", "Define each pillar with one concrete example."),
-    ("authentication vs authorization", "Difference with a login example (who you are vs what you may do)."),
-    ("symmetric vs asymmetric encryption", "Key counts, speed tradeoff, one algorithm each (AES / RSA). Hybrid use by name only."),
-    ("hashing vs encryption", "One-way vs reversible, salt for passwords, SHA-256 example, MD5 deprecated."),
-    ("digital signatures & certificates", "What a signature guarantees; what a CA is for. No math."),
-    ("HTTPS/TLS", "What the handshake achieves (confidentiality + server identity). No cipher suites."),
+    (
+        "authentication vs authorization",
+        "Difference with a login example (who you are vs what you may do).",
+    ),
+    (
+        "symmetric vs asymmetric encryption",
+        "Key counts, speed tradeoff, one algorithm each (AES / RSA). Hybrid use by name only.",
+    ),
+    (
+        "hashing vs encryption",
+        "One-way vs reversible, salt for passwords, SHA-256 example, MD5 deprecated.",
+    ),
+    (
+        "digital signatures & certificates",
+        "What a signature guarantees; what a CA is for. No math.",
+    ),
+    (
+        "HTTPS/TLS",
+        "What the handshake achieves (confidentiality + server identity). No cipher suites.",
+    ),
     ("OWASP Top-10", "What the list is, name 3-4 entries. No rank-order detail."),
-    ("SQL injection", "Mechanism via one input example, root cause (string-built queries), one prevention."),
-    ("XSS", "Script-runs-in-your-browser idea; reflected vs stored in one line each; output encoding."),
-    ("firewalls", "What it filters; packet-filter vs stateful intuition; application-layer by name."),
+    (
+        "SQL injection",
+        "Mechanism via one input example, root cause (string-built queries), one prevention.",
+    ),
+    (
+        "XSS",
+        "Script-runs-in-your-browser idea; reflected vs stored in one line each; output encoding.",
+    ),
+    (
+        "firewalls",
+        "What it filters; packet-filter vs stateful intuition; application-layer by name.",
+    ),
     ("IDS vs IPS", "Detect vs block, mirror vs inline placement; signature vs anomaly by name."),
     ("VPN", "Tunneling + encryption purpose; what it does NOT protect (compromised endpoint)."),
     ("DoS vs DDoS", "Difference, botnet concept, why DDoS is harder to stop. No tool names."),
-    ("malware types", "Virus vs worm vs trojan vs ransomware, one line each; virus-needs-host distinction."),
+    (
+        "malware types",
+        "Virus vs worm vs trojan vs ransomware, one line each; virus-needs-host distinction.",
+    ),
     ("social engineering & phishing", "Definition, two examples, why tech alone can't stop it."),
-    ("password storage & cracking", "Why plaintext is wrong, salted hashes, brute force vs dictionary; bcrypt by name only."),
+    (
+        "password storage & cracking",
+        "Why plaintext is wrong, salted hashes, brute force vs dictionary; bcrypt by name only.",
+    ),
 )
 
 DSA_THEORY_SYLLABUS: tuple[tuple[str, str], ...] = (
     ("what makes an algorithm", "Algorithm vs program, L1 definition."),
-    ("Big-O & complexity classes", "Rank O(1)..O(2^n); read complexity off a described loop. No formal proofs."),
+    (
+        "Big-O & complexity classes",
+        "Rank O(1)..O(2^n); read complexity off a described loop. No formal proofs.",
+    ),
     ("arrays vs linked lists", "Memory layout, O(1) random access vs O(n) insert; when each wins."),
     ("stacks & queues", "LIFO/FIFO, one real use each."),
     ("hash tables", "Key→bucket idea, collision meaning, average O(1) with the honest caveat."),
     ("trees & BSTs", "BST ordering property; why balance matters; AVL/red-black by name only."),
     ("graph representations", "Adjacency list vs matrix tradeoff by edge count."),
     ("BFS vs DFS", "Queue vs stack; what each guarantees."),
-    ("greedy vs divide-&-conquer vs DP", "THE distinction: local choice / independent subproblems / overlapping subproblems."),
-    ("sorting comparison", "Bubble/selection O(n^2) vs merge O(n log n); stability; quicksort's worst case."),
+    (
+        "greedy vs divide-&-conquer vs DP",
+        "THE distinction: local choice / independent subproblems / overlapping subproblems.",
+    ),
+    (
+        "sorting comparison",
+        "Bubble/selection O(n^2) vs merge O(n log n); stability; quicksort's worst case.",
+    ),
 )
+
 
 # behavior-core.md §2.6 — the exact mix per session length (DSA-theory at positions ~3/6/9)
 def dsa_theory_positions(total: int) -> tuple[int, ...]:

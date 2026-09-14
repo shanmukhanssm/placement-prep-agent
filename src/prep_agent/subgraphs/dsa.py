@@ -5,9 +5,13 @@ least-recently-served ranking → seeded tie-break → difficulty calibration, o
 seed catalog in prompts/dsa.py. The selector LLM only phrases the statement; catalog
 fields (optimized_approach / edge_cases) never pass through the LLM. The evaluator
 grades attempts (DSA_EVALUATOR_V1) with the locked failure path — one retry, then a
-conservative optimality_pct = 0. Termination: pass (≥ 80) · explicit give-up · forced
-stop after DSA_MAX_ATTEMPTS. dsa_wrap mints the record id with the per-day per-field
-seq and reveals the reference approach per the spec templates.
+conservative optimality_pct = 0. Termination: pass (≥ 80) · explicit give-up or a bare
+exit token ("bye"/"quit"/… — same give-up path, H5) · forced stop after DSA_MAX_ATTEMPTS.
+Re-entry after a wrapped session starts a FRESH selection (H2): the parent wrapper
+dsa_session owns the full namespace reset (attempts/attempt_count/final_score/gave_up/
+meta_count all default), and route_by_phase defensively maps "done" to the selector so a
+stale "done" can never grade an attempt. dsa_wrap mints the record id with the per-day
+per-field seq and reveals the reference approach per the spec templates.
 
 Registry deltas live in the same commit as this file (see progress-tracker.md).
 """
@@ -48,6 +52,25 @@ _GIVE_UP_PHRASES: tuple[str, ...] = (
     "cannot solve this",
     "show me the answer",
     "i quit",
+)
+# Bare exit tokens get the same treatment as an explicit give-up (behavior-dsa §5.4, H5):
+# wrap records the best attempt as-is and reveals the reference approach. Exact-token
+# matching only — a real attempt containing the substring ("stop and restart each pass")
+# must grade normally.
+_EXIT_TOKENS: frozenset[str] = frozenset(
+    {
+        "bye",
+        "goodbye",
+        "exit",
+        "quit",
+        "stop",
+        "see you",
+        "see ya",
+        "i m done",
+        "im done",
+        "i'm done",
+        "i am done",
+    }
 )
 _TOPIC_ALIASES: dict[str, str] = {
     "dp": "dp-basics",
@@ -174,10 +197,14 @@ def selector(state: DsaState) -> dict[str, Any]:
         statement_brief=entry["statement_brief"],
     )
     draft = call_structured("dsa_selector", ProblemSpec, prompt)
-    statement = draft.statement if draft is not None and draft.statement.strip() else (
+    statement = (
+        draft.statement
+        if draft is not None and draft.statement.strip()
         # deterministic fallback: the brief plus a completeness reminder — session continues
-        f"{entry['statement_brief'].capitalize()}. Solve it for the general case and "
-        "state any assumptions you need."
+        else (
+            f"{entry['statement_brief'].capitalize()}. Solve it for the general case and "
+            "state any assumptions you need."
+        )
     )
     problem = ProblemSpec(
         title=entry["title"],
@@ -191,12 +218,16 @@ def selector(state: DsaState) -> dict[str, Any]:
     )
     logger.info(
         "[selector] chose %s (%s) — weak_areas=%s",
-        entry["title"], entry["difficulty"], state.weak_areas,
+        entry["title"],
+        entry["difficulty"],
+        state.weak_areas,
     )
     return {
         "phase": "awaiting_attempt",
         "problem": problem,
-        "started_at": state.started_at or datetime.now().isoformat(),
+        # Unconditional: selector only ever runs at a session start, and a stale
+        # started_at (defense-in-depth re-entry path) would corrupt duration_min.
+        "started_at": datetime.now().isoformat(),
         "assistant_message": (
             f"{_OPENING_CONTRACT}\n\nProblem: {problem.title} ({problem.difficulty})\n"
             f"{problem.statement}\n\n{_FIXED_ASK}"
@@ -217,7 +248,8 @@ def evaluator(state: DsaState) -> dict[str, Any]:
     Locked failure path: judge validation failure after one retry (call_structured)
     → conservative optimality_pct = 0 with feedback; the loop stays bounded.
     """
-    if _is_give_up(state.user_message):
+    low_msg = state.user_message.strip().lower().replace("\u2019", "'")  # curly → straight
+    if low_msg in _EXIT_TOKENS or _is_give_up(state.user_message):
         return {"phase": "wrap", "gave_up": True, "assistant_message": ""}  # wrap writes
 
     problem = state.problem
@@ -326,8 +358,10 @@ def dsa_wrap(state: DsaState) -> dict[str, Any]:
     """
     problem = state.problem
     title = problem.title if problem else "the problem"
-    termination = "give-up" if state.gave_up else (
-        "pass" if state.final_score >= DSA_PASS_THRESHOLD else "max-attempts"
+    termination = (
+        "give-up"
+        if state.gave_up
+        else ("pass" if state.final_score >= DSA_PASS_THRESHOLD else "max-attempts")
     )
     mechanism = state.best_mechanism or "no valid attempt"
     default_faults = "none" if termination == "pass" else "none recorded"
@@ -398,12 +432,21 @@ def dsa_wrap(state: DsaState) -> dict[str, Any]:
 
 
 def route_by_phase(state: DsaState) -> str:
-    """Entry router: select → selector · awaiting_attempt → evaluator · wrap → dsa_wrap."""
+    """Entry router: select → selector · awaiting_attempt → evaluator · wrap → dsa_wrap.
+
+    "done" (re-entry after a wrapped session) maps to the selector — serve a fresh
+    problem (H2). The parent wrapper dsa_session owns the full namespace reset
+    (attempts/attempt_count/final_score/gave_up/meta_count all default); this mapping is
+    the defensive guarantee, for direct subgraph invocations, that a stale "done" can
+    never grade an attempt against the old problem.
+    """
     if state.phase == "select":
         return "selector"
     if state.phase == "wrap":
         return "dsa_wrap"
-    return "evaluator"  # awaiting_attempt (done never re-enters: session_active is cleared)
+    if state.phase == "done":
+        return "selector"  # re-entry after a wrapped session — serve a fresh problem (H2)
+    return "evaluator"  # awaiting_attempt
 
 
 def build_dsa_graph() -> Any:
@@ -431,9 +474,14 @@ def dsa_session(state: MainState) -> dict[str, Any]:
 
     A typo'd/unknown namespace key raises ValidationError here (extra="forbid") instead
     of silently resetting the machine. session_active: "dsa" while the session is live,
-    "" once wrapped — the topology table's "cleared in dsa_wrap" rule.
+    "" once wrapped — the topology table's "cleared in dsa_wrap" rule. Re-entry after a
+    wrapped session (namespace phase "done") resets the namespace HERE — this wrapper
+    owns the full reset (attempts/attempt_count/final_score/gave_up/meta_count all
+    default), so the new message is routed to the selector, never graded (H2).
     """
     ns = state.session_data.get("dsa") or {}
+    if ns.get("phase") == "done":  # re-entry after a wrapped session → start FRESH (H2)
+        ns = {}
     sub_state = DsaState.model_validate(
         {
             **ns,

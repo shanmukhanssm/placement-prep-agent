@@ -8,10 +8,18 @@ to later fields are accepted (the LLM fills ``extracted``); values that fail
 code-side normalization are dropped and re-asked next turn (self-healing). On
 completion: write_profile + init_report_card with the registry's 1 retry; failure →
 apology, state kept in the checkpoint, user asked to continue next turn. Never raises.
+
+Degraded mode (F1): when the collector LLM is down (call_structured → None after its
+retry), a deterministic regex/verbatim harvester extracts the missing field from the
+user's plain text — every value still passes through _normalize, so invalid input is
+dropped and the templated re-ask stands. Without it a dead LLM re-asks the same field
+forever and onboarding dead-ends. Greets/acknowledgments ("hi", "yes", "ok", …) are
+never harvested.
 """
 
 import json
 import logging
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -89,6 +97,133 @@ def _build_profile(collected: dict[str, str]) -> Profile:
     )
 
 
+_GREETINGS = frozenset(
+    {
+        "hi",
+        "hello",
+        "hey",
+        "yo",
+        "yes",
+        "y",
+        "no",
+        "n",
+        "ok",
+        "okay",
+        "sure",
+        "continue",
+        "hii",
+        "hlo",
+    }
+)
+
+# Words that mark a conversational fragment rather than a name — the degraded-mode
+# harvester must never store them (a wrong name passes _normalize and is never re-asked).
+_NAME_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "i",
+        "im",
+        "i'm",
+        "am",
+        "is",
+        "are",
+        "was",
+        "me",
+        "my",
+        "we",
+        "you",
+        "he",
+        "she",
+        "it",
+        "its",
+        "they",
+        "this",
+        "that",
+        "not",
+        "no",
+        "yes",
+        "so",
+        "very",
+        "just",
+        "from",
+        "in",
+        "at",
+        "on",
+        "tired",
+        "nervous",
+        "confused",
+        "ready",
+        "done",
+        "fine",
+        "good",
+        "great",
+        "here",
+        "looking",
+        "trying",
+        "going",
+        "feeling",
+        "maybe",
+        "wait",
+        "hmm",
+        "ok",
+        "later",
+        "sorry",
+        "thanks",
+    }
+)
+
+
+def _harvest(field: str, message: str) -> str | None:
+    """Degraded-mode fallback (collector LLM down): regex/verbatim extraction (F1).
+
+    Conservative by design: greetings and conversational fragments must never become
+    profile values (a wrong name is permanent — it passes _normalize and is never
+    re-asked), so the name paths reject stop-word openers ("i am tired", "no thanks",
+    "this is great") and core_subject ignores negated mentions ("not cyber").
+    """
+    text = message.strip()
+    low = text.lower()
+    if not text or low in _GREETINGS:
+        return None
+    if field == "grad_year":
+        m = re.search(r"\b(20[2-3]\d)\b", text)
+        return _normalize(field, m.group(1)) if m else None
+    if field == "core_subject":
+        picks: set[str] = set()
+        for m in re.finditer(r"\b(ai\s*/?\s*ml|aiml|cyber\s*security|cyber)\b", low):
+            prefix = low[max(0, m.start() - 14) : m.start()]
+            if re.search(
+                r"\b(not|no|never|don'?t|can'?t|doesn'?t|didn'?t|except|instead"
+                r"|other than|rather)\s*(want|to|do|for)?\s*$",
+                prefix,
+            ):
+                continue  # negated mention — "not cyber" must not harvest "cyber"
+            picks.add("cyber" if "cyber" in m.group(0) else "aiml")
+        return picks.pop() if len(picks) == 1 else None  # conflicting mentions → re-ask
+    if field == "name":
+        m = re.search(r"\b(?:my name is|i am|i'm|im|this is|call me)\s+([a-z][a-z .'-]{1,30})", low)
+        if m:
+            captured = m.group(1).strip()
+            if captured.split()[0] not in _NAME_STOPWORDS:
+                return captured.title()
+            return None  # "i am tired" / "this is great" — conversational, not a name
+        words = text.split()
+        if (
+            1 <= len(words) <= 3
+            and all(w.isalpha() for w in words)
+            and len(text) <= 30
+            and words[0].lower() not in _NAME_STOPWORDS
+        ):
+            return text.title()
+        return None
+    # degree_branch / target_roles / weak_areas: verbatim short answer, code-validated
+    if len(text) <= 60:
+        return _normalize(field, text)
+    return None
+
+
 def _persist(profile: Profile) -> tuple[bool, str]:
     """write_profile + init_report_card, the registry's 1 retry each; (ok, failure_code)."""
     for attempt in range(2):
@@ -117,9 +252,11 @@ _WELCOME_TEMPLATE = (
 def onboarding(state: MainState) -> dict[str, Any]:
     """Collect the 6 profile fields one per turn; on completion write profile + init card.
 
-    Failure behavior (graph-design.md): LLM failure → templated re-ask of the missing
-    field; tool-write failure after one retry → apology, collected answers kept in
-    checkpointed state, user asked to continue next turn. Never raises.
+    Failure behavior (graph-design.md): LLM failure → deterministic fallback harvest
+    of the missing field from the user's plain text (F1), falling back to the templated
+    re-ask when nothing can be extracted; tool-write failure after one retry →
+    apology, collected answers kept in checkpointed state, user asked to continue next
+    turn. Never raises.
     """
     ns = dict(state.session_data.get("onboarding") or {})
     collected: dict[str, str] = dict(ns.get("collected") or {})
@@ -149,7 +286,25 @@ def onboarding(state: MainState) -> dict[str, Any]:
                         )
             message = turn.message
         else:
-            message = _ASK_EXAMPLES[missing]  # deterministic fallback: templated re-ask
+            # collector down twice → deterministic harvester (F1); never bypasses _normalize
+            harvested = _harvest(missing, state.user_message)
+            if harvested is not None:
+                collected[missing] = harvested
+                nxt = _next_missing(collected)
+                message = (
+                    _WELCOME_TEMPLATE.format(
+                        name=collected["name"],
+                        degree_branch=collected["degree_branch"],
+                        grad_year=collected["grad_year"],
+                        roles=collected["target_roles"],
+                        weak=collected["weak_areas"],
+                        subject=collected["core_subject"].upper(),
+                    )
+                    if nxt is None
+                    else _ASK_EXAMPLES[nxt]
+                )
+            else:
+                message = _ASK_EXAMPLES[missing]  # unchanged templated re-ask
 
     if _next_missing(collected) is not None:
         ns["collected"] = collected
@@ -180,7 +335,8 @@ def onboarding(state: MainState) -> dict[str, Any]:
             **state.session_data,
             "onboarding": {"collected": collected, "complete": True},
         },
-        "assistant_message": welcome or _WELCOME_TEMPLATE.format(
+        "assistant_message": welcome
+        or _WELCOME_TEMPLATE.format(
             name=profile.name,
             degree_branch=profile.degree_branch,
             grad_year=profile.grad_year,

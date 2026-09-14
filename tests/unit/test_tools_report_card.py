@@ -24,7 +24,9 @@ def _write_card(data_dir: Path, fields: dict[str, Any] | None = None) -> None:
         "schema_version": 1,
         "created_at": "2026-09-01T09:00:00+00:00",
         "profile": {"name": "Ravi", "core_subject": "aiml"},
-        "fields": fields if fields is not None else {
+        "fields": fields
+        if fields is not None
+        else {
             "dsa": {"scores": []},
             "communication": {"scores": []},
             "core_subject": {"scores": []},

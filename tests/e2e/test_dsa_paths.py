@@ -95,8 +95,14 @@ def test_dsa_give_up_path_e2e(llm_queues, tmp_path):
     config = {"configurable": {"thread_id": "dsa-giveup"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
     llm_queues["dsa_selector"] = [
-        {"statement": "Statement.", "title": "x", "topic": "arrays", "difficulty": "easy",
-         "optimized_approach": "x", "edge_cases": []}
+        {
+            "statement": "Statement.",
+            "title": "x",
+            "topic": "arrays",
+            "difficulty": "easy",
+            "optimized_approach": "x",
+            "edge_cases": [],
+        }
     ]
     llm_queues["dsa_evaluator"] = [_verdict(40)]
     for message in ("let's do a dsa problem", "brute force everything", "I give up"):
@@ -114,8 +120,14 @@ def test_dsa_max_attempts_path_e2e(llm_queues, tmp_path):
     config = {"configurable": {"thread_id": "dsa-max"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
     llm_queues["dsa_selector"] = [
-        {"statement": "Statement.", "title": "x", "topic": "arrays", "difficulty": "easy",
-         "optimized_approach": "x", "edge_cases": []}
+        {
+            "statement": "Statement.",
+            "title": "x",
+            "topic": "arrays",
+            "difficulty": "easy",
+            "optimized_approach": "x",
+            "edge_cases": [],
+        }
     ]
     llm_queues["dsa_evaluator"] = [_verdict(55), _verdict(60), _verdict(65)]
     for message in ("let's do a dsa problem", "attempt one", "attempt two", "attempt three"):
