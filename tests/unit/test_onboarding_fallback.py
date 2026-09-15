@@ -147,3 +147,60 @@ def test_collector_success_keeps_turn_message_path(llm_queues) -> None:
     # the LLM's message is used verbatim; no fallback harvesting touched anything
     assert result["assistant_message"] == "Nice to meet you, Arjun! Degree and branch?"
     assert result["session_data"]["onboarding"]["collected"] == {"name": "Arjun"}
+
+
+# --- B-7a: core_subject normalization accepts natural spellings (no stale re-ask) ---
+
+
+def test_normalize_core_subject_accepts_natural_answers() -> None:
+    norm = onboarding_module._normalize
+    # the bug-report cases: a collector answer like "AI/ML" used to be dropped + re-asked
+    assert norm("core_subject", "AI/ML") == "aiml"
+    assert norm("core_subject", "cyber security") == "cyber"
+    # spacing / punctuation / case variants
+    assert norm("core_subject", "aiml") == "aiml"
+    assert norm("core_subject", "AIML") == "aiml"
+    assert norm("core_subject", "ai ml") == "aiml"
+    assert norm("core_subject", "AI,ML") == "aiml"
+    assert norm("core_subject", "ai-ml") == "aiml"
+    assert norm("core_subject", "cybersecurity") == "cyber"
+    assert norm("core_subject", "Cyber-Security") == "cyber"
+    assert norm("core_subject", "Cyber") == "cyber"
+    # bare "ai" / "ml" are ambiguous alone — still dropped and re-asked
+    assert norm("core_subject", "ai") is None
+    assert norm("core_subject", "ML") is None
+    # garbage still None
+    assert norm("core_subject", "physics") is None
+    assert norm("core_subject", "   ") is None
+
+
+# --- B-7b: the completing turn shows the welcome template, never a stale re-ask ---
+
+
+def test_completing_turn_shows_welcome_template_not_stale_reask(llm_queues) -> None:
+    """The collector drafts its message BEFORE the node applies the extraction, so on
+    the completing turn its message can still re-ask the just-answered field — the
+    node must surface _WELCOME_TEMPLATE instead (the failed-persist apology path is
+    separate and unchanged)."""
+    llm_queues["onboarding_collector"] = [
+        # stale: the collector re-asks core_subject even while extracting it
+        {"message": "Core subject: aiml or cyber?", "extracted": {"core_subject": "aiml"}},
+    ]
+    collected = {
+        "name": "Arjun",
+        "degree_branch": "B.Tech CSE",
+        "grad_year": "2027",
+        "target_roles": "SDE",
+        "weak_areas": "arrays",
+    }
+    result = onboarding_module.onboarding(_node_state("aiml", collected))
+    assert result["has_profile"] is True
+    assert result["assistant_message"] == onboarding_module._WELCOME_TEMPLATE.format(
+        name="Arjun",
+        degree_branch="B.Tech CSE",
+        grad_year=2027,
+        roles="SDE",
+        weak="arrays",
+        subject="AIML",
+    )
+    assert "Core subject" not in result["assistant_message"]  # the stale re-ask is gone

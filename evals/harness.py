@@ -160,7 +160,7 @@ def live_text_call(role: str, prompt: str) -> tuple[str, bool]:
     with LogCapture() as capture:
         throttle()
         try:
-            message = str(config.get_llm(role).invoke(prompt)).strip()
+            message = config.message_text(config.get_llm(role).invoke(prompt))
         except Exception as exc:  # noqa: BLE001 — provider-side failure
             message = ""
             capture.hits.append(f"{role}: live text call raised: {exc}")
@@ -171,7 +171,7 @@ def live_text_call(role: str, prompt: str) -> tuple[str, bool]:
     with LogCapture() as capture2:
         throttle()
         try:
-            message2 = str(config.get_llm(role).invoke(prompt)).strip()
+            message2 = config.message_text(config.get_llm(role).invoke(prompt))
         except Exception as exc:  # noqa: BLE001
             message2 = ""
             capture2.hits.append(f"{role}: live text call raised: {exc}")

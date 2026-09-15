@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-09-15T18:55:44",
+  "layers_label": "layers 3",
+  "provider": {
+    "base_url": "https://api.xkiro.com/v1",
+    "model": "deepseek/deepseek-v4.1-flash:free"
+  },
+  "gate": "PASS",
+  "layers": [
+    {
+      "layer": 3,
+      "name": "Judge Consistency",
+      "metric": "judge consistency (comm_judge + core_judge rubrics, temp 0.2)",
+      "threshold": "100% band compliance; repeat drift ≤ 1 on every pair",
+      "summary": "12/12 green",
+      "passed": true,
+      "notes": [
+        "12/12 anchors fully compliant (band ±1, strong ≥8, weak ≤5, repeat drift ≤1; temp 0.2)"
+      ],
+      "rows": [
+        {
+          "id": "comm-strong-01",
+          "status": "PASS",
+          "detail": "band 9-10 → judged 9 / repeat 9 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "comm-strong-02",
+          "status": "PASS",
+          "detail": "band 9-10 → judged 9.5 / repeat 9.5 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "comm-mid-01",
+          "status": "PASS",
+          "detail": "band 6-7 → judged 6 / repeat 6 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "comm-mid-02",
+          "status": "PASS",
+          "detail": "band 6-7 → judged 8 / repeat 8 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "comm-weak-01",
+          "status": "PASS",
+          "detail": "band 3-4 → judged 4.5 / repeat 4.5 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "comm-weak-02",
+          "status": "PASS",
+          "detail": "band 3-4 → judged 3 / repeat 3 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-strong-01",
+          "status": "PASS",
+          "detail": "band 9-10 → judged 9.5 / repeat 9.5 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-strong-02",
+          "status": "PASS",
+          "detail": "band 9-10 → judged 9.5 / repeat 9.5 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-mid-01",
+          "status": "PASS",
+          "detail": "band 6-7 → judged 7 / repeat 7 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-mid-02",
+          "status": "PASS",
+          "detail": "band 7-8 → judged 8 / repeat 8 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-weak-01",
+          "status": "PASS",
+          "detail": "band 3-4 → judged 2 / repeat 2 (drift 0)",
+          "note": ""
+        },
+        {
+          "id": "core-weak-02",
+          "status": "PASS",
+          "detail": "band 3-4 → judged 3 / repeat 3 (drift 0)",
+          "note": ""
+        }
+      ]
+    }
+  ]
+}

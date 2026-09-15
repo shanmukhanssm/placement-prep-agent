@@ -12,6 +12,7 @@ where the LLM is canned to return the gold intent for each utterance.
 """
 
 import pytest
+from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
 import prep_agent.config as config
@@ -105,7 +106,10 @@ def test_get_llm_bounds_request_timeout_and_retries(monkeypatch: pytest.MonkeyPa
     # give the real factory a non-empty key (no network: construction only, no invoke).
     monkeypatch.setattr(config, "LLM_API_KEY", "test-key")
     client = config.get_llm("clarify")
-    assert _request_timeout_of(client) == 60.0  # F2: not the openai 600s default
+    # B-4: pin against the env-derived constant, NOT the default — LLM_REQUEST_TIMEOUT is
+    # env-tunable (config default 60; the repo's own .env.example recommends 180), so
+    # pinning 60.0 made this test fail in any environment that sets the variable.
+    assert _request_timeout_of(client) == float(config.LLM_REQUEST_TIMEOUT)
     assert client.max_retries == 0  # call_structured owns the single manual retry
 
 
@@ -134,3 +138,53 @@ def test_blank_env_timeout_does_not_crash_config_import() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+# --- B-8: the registry-documented per-role max_tokens budgets are wired ---
+
+
+def test_get_llm_wires_registry_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    """prompt-registry.md Model Policy documents a per-role token budget; get_llm must
+    pass it to the client (sampled roles here — the full 13-role table lives in
+    config.py::ROLE_MAX_TOKENS, values verified against the registry sections)."""
+    monkeypatch.setattr(config, "LLM_API_KEY", "test-key")
+    assert config.get_llm("router_classify").max_tokens == 150
+    assert config.get_llm("comm_wrap").max_tokens == 400
+    assert config.get_llm("core_judge").max_tokens == 300
+    # same-commit sync: every role with a temperature also has a budget
+    assert set(config.ROLE_MAX_TOKENS) == set(config.ROLE_TEMPERATURE)
+
+
+# --- B-1: plain-text LLM output goes through config.message_text, never str(AIMessage) ---
+
+
+def test_message_text_helper_contract() -> None:
+    """The shared extractor: str content → itself; list-of-str content → joined;
+    plain strings (test-stub shape, no .content) → unchanged; always stripped."""
+    assert config.message_text("  hello there  ") == "hello there"
+    assert config.message_text(AIMessage(content=" hi there ")) == "hi there"
+    assert config.message_text(AIMessage(content=["part one ", " part two"])) == (
+        "part one\npart two"
+    )
+
+    class _NoContent:
+        def __str__(self) -> str:
+            return "bare stub"
+
+    assert config.message_text(_NoContent()) == "bare stub"
+    # None / empty content → "" so the caller keeps its templated-fallback contract
+    assert config.message_text(None) == ""
+    assert config.message_text(AIMessage(content="")) == ""
+
+
+def test_message_text_never_leaks_the_aimessage_repr() -> None:
+    """B-1 regression pin: str(AIMessage) is the pydantic repr — token-usage metadata
+    used to land verbatim in assistant_message on every live greeting/comm-wrap turn."""
+    message = AIMessage(
+        content="Welcome back, Arjun! Your dsa is improving.",
+        additional_kwargs={},
+        response_metadata={"token_usage": {"total_tokens": 123456}},
+    )
+    text = config.message_text(message)
+    assert text == "Welcome back, Arjun! Your dsa is improving."
+    assert "token_usage" not in text and "content=" not in text and "response_metadata" not in text

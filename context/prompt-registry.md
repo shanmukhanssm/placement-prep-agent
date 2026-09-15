@@ -10,16 +10,16 @@
 
 | Role | Model | Temperature | Max tokens | Why |
 | --- | --- | --- | --- | --- |
-| ALL roles | env `LLM_MODEL` (placeholder `llama-3.3-70b-versatile`) | see entries | see entries | Model strings sourced ONLY from config.py; any OpenAI-compatible provider is an env change. Owner set Ollama cloud (`gpt-oss:120b-cloud` via `https://ollama.com/v1`) on 2026-09-14 — pending a working key (401 at the Phase 2 smoke test; env-only swap when fixed). |
+| ALL roles | env `LLM_MODEL` (placeholder `llama-3.3-70b-versatile`) | see entries | see entries | Model strings sourced ONLY from config.py; any OpenAI-compatible provider is an env change. Live provider: xkiro (owner key in .env) — `qwen/qwen3.5-flash:free` 2026-09-15, retired upstream 2026-09-16 → `deepseek/deepseek-v4.1-flash:free` (smoke-verified: plain text, bind_tools+required, JSON-in-content). |
 | Judge tiering candidate (parked) | `llama-3.1-8b-instant` | 0.2 | 400 | Cost/rate-limit lever if free-tier limits bite — NOT active |
 
-Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]` (default Groq `https://api.groq.com/openai/v1`), `api_key=os.environ["LLM_API_KEY"]`, `model` from config.py. Changing provider = env change only.
+Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]` (default Groq `https://api.groq.com/openai/v1`), `api_key=os.environ["LLM_API_KEY"]`, `model` from config.py. Changing provider = env change only. Per-role Max-token budgets above are now WIRED in code (B-8 fix, 2026-09-16): `config.get_llm` passes `max_tokens=ROLE_MAX_TOKENS[role]` — this registry stays the source of the values; amend both together.
 
 **Phase 2 structured-call helper:** every registered prompt below is invoked through `config.call_structured(role, schema, prompt)` — ONE validation retry, then the node's documented deterministic fallback; the helper never raises. `comm_wrap` is the one plain-text call.
 
 ---
 
-## `router_classify` — v1
+## `router_classify` — v2
 
 | Property | Value |
 | --- | --- |
@@ -28,7 +28,7 @@ Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]`
 | Model / temp / max tokens | placeholder / 0.0 / 150 |
 | Structured output | `IntentClassification {intent: dsa|communication|core_subject|progress|smalltalk|exit, confidence: 0.0-1.0}` |
 | Consumed state | `user_message`, 1-line session context (last field practiced) |
-| Version history | v1 — initial intake |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-5): dsa-vs-core_subject disambiguation rules + 8-line few-shot block (eval evidence: Layer 2 deterministic misroute "my arrays are weak" → core_subject/0.95; near-paraphrase "arrays are my weak area" routed dsa correctly) |
 
 ```
 You classify the user's message for a placement-prep coach.
@@ -46,7 +46,25 @@ Rules:
 - When the user references practicing, practicing one field takes priority.
 - "DSA theory" questions (e.g. "what is a greedy algorithm") are core_subject,
   NOT dsa. dsa means solving a problem.
+- A weakness mention tied to a practice area ("my arrays are weak", "I'm bad
+  at graphs", "strings trip me up") is dsa — the student wants to PRACTICE
+  problems in that topic. Name the topic only as the practice area, never as
+  theory.
+- core_subject is ONLY for theory/viva-style quizzing of a subject ("quiz me
+  on AIML theory", "ask me OS questions").
 - Output confidence < 0.6 only when the message genuinely fits two categories.
+
+Examples (utterance -> category):
+- "my arrays are weak" -> dsa
+- "arrays are my weak area" -> dsa
+- "quiz me on aiml theory" -> core_subject
+- "what is a greedy algorithm" -> core_subject
+- "help me with HR questions" -> communication
+- "how am I doing" -> progress
+- "give me a dsa problem" -> dsa
+- "bye for now" -> exit
+
+User's message this turn: {user_message}
 
 Return ONLY the structured output.
 ```
@@ -85,7 +103,7 @@ Return ONLY the structured output.
 
 ---
 
-## `greet_returning` — v1
+## `greet_returning` — v2
 
 | Property | Value |
 | --- | --- |
@@ -94,17 +112,27 @@ Return ONLY the structured output.
 | Model / temp / max tokens | placeholder / 0.6 / 250 |
 | Structured output | none (plain message) |
 | Consumed state | `trend_summary` (precomputed verdicts + averages — the ONLY permitted numbers), `profile.name` |
-| Version history | v1 — initial intake |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-2): mechanical verbatim-numeral rules (character-for-character copy incl. decimal point, no derived/counted numerals, no % or unit attachments); removed invented-literal example ("12 points") (eval evidence: Layer 4 rounding violations — "74%"/"74" written for JSON "74.0") |
 
 ```
 Welcome {name} back. Narrate their progress using ONLY these numbers:
 {trend_summary_json}
 
+Number rules — mechanical, zero exceptions:
+- Copy every number EXACTLY character-for-character as it appears in
+  trend_summary_json, INCLUDING the decimal point: JSON "74.0" must be written
+  "74.0" — never "74", never "74%", never rounded or reformatted.
+- Never derive, count, or compute any new numeral: no "3 sessions", no
+  "12 points", no percentages, no dates. If a number is not printed above,
+  you may not say it.
+- Do not attach % or any unit that changes the numeral's text.
+
 Rules:
-- You may phrase, compare and encourage — but every number you say must appear
-  verbatim in trend_summary_json. Inventing or rounding a new number is a failure.
-- improving/flat/declining verdicts: state them honestly; for declining, be kind
-  and concrete ("arrays dipped 12 points — let's revisit").
+- improving/flat/declining verdicts: state them honestly; for declining, be
+  kind and concrete ("arrays dipped since your last sessions — let's revisit
+  them").
+- If a field has verdict "not_enough_data", say so plainly ("communication
+  needs more sessions before I can read a trend").
 - End by asking what they want to practice today (dsa, communication, or their
   core subject) — conversationally, not as a numbered menu.
 - Max 4 sentences.
@@ -112,7 +140,7 @@ Rules:
 
 ---
 
-## `progress_talk` — v1
+## `progress_talk` — v2
 
 | Property | Value |
 | --- | --- |
@@ -121,17 +149,27 @@ Rules:
 | Model / temp / max tokens | placeholder / 0.5 / 300 |
 | Structured output | none (plain message) |
 | Consumed state | `user_message`, `trend_summary`, recent history digest (injected by code) |
-| Version history | v1 — initial intake |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-2): mechanical verbatim-numeral rules replace the abstract verbatim rule (character-for-character copy incl. decimal point, no derived/counted numerals, no % or unit attachments) (eval evidence: Layer 4 rounding violations — "74%"/"74" written for JSON "74.0") · v2-rev — Layer-5 fix (G2 narration): not_enough_data clause now pins the plain-words example phrasing ("needs more sessions before I can read a trend") and forbids the raw verdict token — PROGRESS_TALK_V1 was the only narration prompt without the pinned example, so the model improvised phrasing no grader family accepts ("can't say", raw "not_enough_data") |
 
 ```
 The student asks: "{user_message}". Answer from ONLY these numbers:
 {trend_summary_json}
 
+Number rules — mechanical, zero exceptions:
+- Copy every number EXACTLY character-for-character as it appears in
+  trend_summary_json, INCLUDING the decimal point: JSON "74.0" must be written
+  "74.0" — never "74", never "74%", never rounded or reformatted.
+- Never derive, count, or compute any new numeral: no "3 sessions", no
+  "12 points", no percentages, no dates. If a number is not printed above,
+  you may not say it.
+- Do not attach % or any unit that changes the numeral's text.
+
 Rules:
-- Same number-integrity rule as the greeting: no invented, rounded or derived
-  numbers beyond simple averages already present.
-- If data is insufficient (not_enough_data), say so honestly and invite a session.
+- If a field has verdict "not_enough_data", say so plainly in words, e.g.
+  ("communication needs more sessions before I can read a trend") — never
+  output the raw verdict token itself, and never invent a number to cover it.
 - Concrete and encouraging; name the weakest field and suggest it.
+- Max 4 sentences.
 ```
 
 ---
@@ -156,7 +194,7 @@ see progress). Never route silently; never apologize twice.
 
 ---
 
-## `farewell` — v1
+## `farewell` — v2
 
 | Property | Value |
 | --- | --- |
@@ -165,12 +203,24 @@ see progress). Never route silently; never apologize twice.
 | Model / temp / max tokens | placeholder / 0.5 / 150 |
 | Structured output | none (plain message) |
 | Consumed state | `trend_summary` (one-line recap), sessions practiced today (from state) |
-| Version history | v1 — initial intake |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-2): mechanical verbatim-numeral rules, for consistency with greet/progress (character-for-character copy incl. decimal point, no derived numerals, no % or unit attachments) (eval evidence: Layer 4 rounding violations); fence below re-synced to the full constant text (the v1 fence had drifted from code) |
 
 ```
 Say goodbye warmly. Recap in one line what was practiced today and, if
 trend_summary shows a verdict change, mention it. Invite them back tomorrow.
-Max 3 sentences.
+Sessions practiced today: {sessions_today}. Trend summary: {trend_summary_json}.
+
+Number rules — mechanical, zero exceptions:
+- Copy every number EXACTLY character-for-character as it appears in
+  trend_summary_json, INCLUDING the decimal point: JSON "74.0" must be written
+  "74.0" — never "74", never "74%", never rounded or reformatted.
+- Never derive, count, or compute any new numeral: no "3 sessions", no
+  percentages, no dates. The sessions-today counts above may be repeated
+  as-is; nothing else.
+- Do not attach % or any unit that changes the numeral's text.
+
+Rules:
+- Max 3 sentences. Friendly, never robotic.
 ```
 
 ---
@@ -219,7 +269,7 @@ Write the self-contained problem statement for the ONE DSA problem already chose
 
 ---
 
-## `comm_judge` — v1 (Phase 2.2 revision per behavior-comm.md)
+## `comm_judge` — v2 (Phase 4 fix B-6 calibration clause; v1 Phase 2.2 revision per behavior-comm.md)
 
 | Property | Value |
 | --- | --- |
@@ -228,7 +278,7 @@ Write the self-contained problem statement for the ONE DSA problem already chose
 | Model / temp / max tokens | placeholder / 0.2 / 350 |
 | Structured output | `AnswerScore {score: 0-10, structure: 0-10, clarity: 0-10, relevance: 0-10, confidence: 0-10, verdict: str}` — **Phase 2.2 delta (same commit)**: the prompt now carries the behavior-comm §3 weighted holistic derivation (0.25/0.25/0.30/0.20), the relevance/empty/half-answered caps, and the §3 anti-inflation rules verbatim; Hinglish policy included |
 | Consumed state | current question, the composite answer (answer + probe replies — "all text from question to next question is the answer material the judge sees") |
-| Version history | v1 — initial intake · v1-rev (Phase 2.2: weights, caps, anti-inflation, Hinglish) |
+| Version history | v1 — initial intake · v1-rev (Phase 2.2: weights, caps, anti-inflation, Hinglish) · v2 — Phase 4 fix (B-6): calibration clause added between the derivation and the anti-inflation rules (concrete criteria that EARN the 9-10 band; caps are maximums, never targets; band anchors: excellent 9-10, strong-but-human 8-9, good-with-fixable-gaps 6-7). Anti-inflation rules 1-9, holistic formula, 0.5 rounding, sub-score structure, verdict spec, and Hinglish clause UNCHANGED — caps always win (eval evidence: Layer 3 anchor comm-strong-02 judged 7.5/7.5 vs human band 9-10, drift 0) |
 
 ---
 

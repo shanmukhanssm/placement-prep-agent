@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-09-15T18:56:10",
+  "layers_label": "layers 1",
+  "provider": {
+    "base_url": "https://api.xkiro.com/v1",
+    "model": "deepseek/deepseek-v4.1-flash:free"
+  },
+  "gate": "PASS",
+  "layers": [
+    {
+      "layer": 1,
+      "name": "Tool & Unit",
+      "metric": "deterministic tool cases + trend properties (pytest -m unit)",
+      "threshold": "100%",
+      "summary": "1/1 green",
+      "passed": true,
+      "notes": [
+        "exit code 0 = all unit-marked cases green; Layer-1 gate for every later layer"
+      ],
+      "rows": [
+        {
+          "id": "unit-suite",
+          "status": "PASS",
+          "detail": "pytest -m unit: 111 passed, 16 deselected in 4.32s",
+          "note": ""
+        }
+      ]
+    }
+  ]
+}

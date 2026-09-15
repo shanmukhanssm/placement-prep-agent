@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-09-15T19:07:30",
+  "layers_label": "layer 5",
+  "provider": {
+    "base_url": "https://api.xkiro.com/v1",
+    "model": "deepseek/deepseek-v4.1-flash:free"
+  },
+  "gate": "PASS",
+  "layers": [
+    {
+      "layer": 5,
+      "name": "Golden E2E",
+      "metric": "session completion (G1-G3 golden cases × 3 runs, deterministic graders)",
+      "threshold": "all properties green on every run (3/3 per case)",
+      "summary": "9/9 green",
+      "passed": true,
+      "notes": [
+        "each case runs 3 times (the owner's repeated-runs bar) — all 3 runs green = gate passed; a red run invalidates the whole set",
+        "runs executed one per process via scripts/layer5_driver.py (sandbox kills long-lived background jobs); results assembled from layer5-partial.jsonl"
+      ],
+      "rows": [
+        {
+          "id": "G1/run-1",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G1/run-2",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G1/run-3",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G2/run-1",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G2/run-2",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G2/run-3",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G3/run-1",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G3/run-2",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        },
+        {
+          "id": "G3/run-3",
+          "status": "PASS",
+          "detail": "all properties green",
+          "note": ""
+        }
+      ]
+    }
+  ]
+}

@@ -17,7 +17,7 @@ import json
 import logging
 from typing import Any
 
-from prep_agent.config import get_llm
+from prep_agent.config import message_text
 from prep_agent.prompts.greetings import (
     FAREWELL_V1,
     GREET_RETURNING_V1,
@@ -67,10 +67,20 @@ def _llm_narrate(
 
     The fallback is built from the same numbers in code, so an LLM outage never
     crashes a turn and never invents a number (number-integrity rule).
+
+    The factory is resolved at CALL time (function-local import, like
+    comm.py::comm_wrap) — NOT bound at module import: the documented stub seam is
+    ``monkeypatch.setattr(config, "get_llm", …)`` (tests/conftest.py::llm_queues),
+    which a module-level ``from … import get_llm`` would silently bypass (bug B-3),
+    leaving tests to hit the real provider or fall back.
     """
+    from prep_agent.config import get_llm  # noqa: PLC0415 — call-time seam resolution
+
     try:
         message = get_llm(role).invoke(prompt)
-        text = str(message).strip() if message is not None else ""
+        # message_text, never str(): str(AIMessage) is the pydantic repr and would leak
+        # token-usage metadata to students (bug B-1)
+        text = message_text(message)
     except Exception as exc:  # noqa: BLE001 — degrade to templated fallback
         logger.warning("[%s] LLM failed — templated fallback: %s", role, exc)
         return fallback

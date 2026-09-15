@@ -28,6 +28,7 @@ from prep_agent.config import (
     SESSION_MAX_QUESTIONS,
     SESSION_MIN_QUESTIONS,
     call_structured,
+    message_text,
 )
 from prep_agent.prompts.communication import COMM_INTERVIEWER_V1, COMM_JUDGE_V1, COMM_WRAP_V1
 from prep_agent.state import MainState, QuestionRecord
@@ -346,7 +347,9 @@ def comm_wrap(state: CommState) -> dict[str, Any]:
 
     summary: str | None = None
     try:
-        summary = str(get_llm("comm_wrap").invoke(prompt))
+        # message_text, never str(): str(AIMessage) is the pydantic repr and would leak
+        # token-usage metadata into the wrap message (bug B-1)
+        summary = message_text(get_llm("comm_wrap").invoke(prompt))
     except Exception as exc:  # noqa: BLE001 — templated fallback per the failure contract
         logger.warning("[comm_wrap] summary LLM failed — templated fallback: %s", exc)
     if not summary or not summary.strip():

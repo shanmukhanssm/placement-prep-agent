@@ -1,7 +1,8 @@
 """Central constants and the ONE LLM client factory.
 
-Model strings, temperatures, and run limits live ONLY here (code-standards.md;
-values sourced from graph-design.md Run Limits and prompt-registry.md Model Policy).
+Model strings, temperatures, per-role max-token budgets, and run limits live ONLY here
+(code-standards.md; values sourced from graph-design.md Run Limits and
+prompt-registry.md Model Policy).
 """
 
 import logging
@@ -40,6 +41,24 @@ ROLE_TEMPERATURE: Final[dict[str, float]] = {
     "comm_wrap": 0.5,  # new role (COMM_WRAP_V1) — same-commit prompt-registry entry
     "core_examiner": 0.7,
     "core_judge": 0.2,
+}
+
+# per-role max_tokens sourced from prompt-registry.md Model Policy — same-commit sync
+# (each value verified against its section's "Model / temp / max tokens" row; B-8)
+ROLE_MAX_TOKENS: Final[dict[str, int]] = {
+    "router_classify": 150,
+    "onboarding_collector": 300,
+    "greet_returning": 250,
+    "progress_talk": 300,
+    "clarify": 120,
+    "farewell": 150,
+    "dsa_selector": 500,
+    "dsa_evaluator": 450,
+    "comm_interviewer": 200,
+    "comm_judge": 350,
+    "comm_wrap": 400,
+    "core_examiner": 200,
+    "core_judge": 300,
 }
 
 # --- Run limits (graph-design.md Run Limits table + behavior-spec fan-outs) ---
@@ -84,22 +103,49 @@ HISTORY_DIR: Final[str] = "data/history"
 
 
 def get_llm(role: str) -> ChatOpenAI:
-    """Single client factory — model strings and temperatures never appear in node code.
+    """Single client factory — model strings/temps/max_tokens never appear in node code.
 
-    F2: every request is bounded by LLM_REQUEST_TIMEOUT (env-tunable, default 60s) —
-    without it the openai client's 600s default could hang a turn for minutes across
-    call_structured's two attempts. max_retries=0 is DELIBERATE: call_structured owns
-    exactly one manual retry; a client-level retry would silently multiply HTTP
-    attempts beyond the per-turn LLM call budget (prompt-registry.md).
+    Per-role ``temperature`` and ``max_tokens`` come from the prompt-registry.md Model
+    Policy tables (ROLE_TEMPERATURE / ROLE_MAX_TOKENS). F2: every request is bounded by
+    LLM_REQUEST_TIMEOUT (env-tunable, default 60s) — without it the openai client's 600s
+    default could hang a turn for minutes across call_structured's two attempts.
+    max_retries=0 is DELIBERATE: call_structured owns exactly one manual retry; a
+    client-level retry would silently multiply HTTP attempts beyond the per-turn LLM
+    call budget (prompt-registry.md).
     """
     return ChatOpenAI(
         base_url=LLM_BASE_URL,
         api_key=LLM_API_KEY,
         model=LLM_MODEL,
         temperature=ROLE_TEMPERATURE[role],
+        max_tokens=ROLE_MAX_TOKENS[role],
         timeout=LLM_REQUEST_TIMEOUT,
         max_retries=0,
     )
+
+
+def message_text(message: object) -> str:
+    """Human-visible text of an LLM response — NEVER ``str(AIMessage)`` (bug B-1).
+
+    ``str(AIMessage)`` is the pydantic repr (``content='…' response_metadata=…``), so
+    prefer ``.content``: a str passes through; a list content joins its str blocks.
+    Test stubs enqueue plain strings (no ``.content`` attribute) — ``str(message)`` is
+    the only fallback, and it is lossless for them. A message-like object with empty or
+    unusable content returns "" so callers keep their empty→templated-fallback contract
+    instead of leaking the repr. Always strips.
+    """
+    if message is None:
+        return ""  # nothing to say → caller's templated fallback
+    content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        return "\n".join(
+            block.strip() for block in content if isinstance(block, str) and block.strip()
+        )
+    if content is None and not hasattr(message, "content"):
+        return str(message).strip()  # plain-string test stubs — str() is lossless
+    return ""  # message-like object with unusable content → caller's templated fallback
 
 
 _RETRY_SUFFIX = (

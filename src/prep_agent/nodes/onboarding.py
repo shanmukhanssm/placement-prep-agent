@@ -81,8 +81,12 @@ def _normalize(field: str, raw: str) -> str | None:
         parts = [p.strip() for p in value.split(",") if p.strip()]
         return ", ".join(parts) or None
     if field == "core_subject":
-        low = value.lower()
-        return low if low in ("aiml", "cyber") else None
+        # B-7a: natural answers ("AI/ML", "AI ML", "cyber security") normalize instead of
+        # being dropped and re-asked. Squash punctuation/spacing, then map to the canonical
+        # Profile token (aiml|cyber). Bare "ai" or "ml" alone stays None (ambiguous), as
+        # does anything unrecognized — validation stays conservative, only spelling widened.
+        squashed = re.sub(r"[^a-z0-9]+", "", value.lower())
+        return {"aiml": "aiml", "cybersecurity": "cyber", "cyber": "cyber"}.get(squashed)
     return value  # name, degree_branch — free text
 
 
@@ -291,18 +295,9 @@ def onboarding(state: MainState) -> dict[str, Any]:
             if harvested is not None:
                 collected[missing] = harvested
                 nxt = _next_missing(collected)
-                message = (
-                    _WELCOME_TEMPLATE.format(
-                        name=collected["name"],
-                        degree_branch=collected["degree_branch"],
-                        grad_year=collected["grad_year"],
-                        roles=collected["target_roles"],
-                        weak=collected["weak_areas"],
-                        subject=collected["core_subject"].upper(),
-                    )
-                    if nxt is None
-                    else _ASK_EXAMPLES[nxt]
-                )
+                # nxt is None → the persist path below renders the welcome template; a
+                # non-None nxt gets the templated re-ask for the next missing field
+                message = _ASK_EXAMPLES[nxt] if nxt is not None else ""
             else:
                 message = _ASK_EXAMPLES[missing]  # unchanged templated re-ask
 
@@ -326,7 +321,10 @@ def onboarding(state: MainState) -> dict[str, Any]:
                 "Say 'continue' and I'll try again."
             ),
         }
-    welcome = message if not complete else ""  # re-entry: LLM wasn't called this turn
+    # B-7b: the completing turn ALWAYS shows the welcome template. The collector's
+    # turn.message was drafted before this turn's extraction landed, so on the
+    # completing turn it is often a stale re-ask — surfacing it as the welcome confused
+    # students. (The failed-persist apology path above is unchanged.)
     return {
         "profile": profile,
         "has_profile": True,
@@ -335,8 +333,7 @@ def onboarding(state: MainState) -> dict[str, Any]:
             **state.session_data,
             "onboarding": {"collected": collected, "complete": True},
         },
-        "assistant_message": welcome
-        or _WELCOME_TEMPLATE.format(
+        "assistant_message": _WELCOME_TEMPLATE.format(
             name=profile.name,
             degree_branch=profile.degree_branch,
             grad_year=profile.grad_year,

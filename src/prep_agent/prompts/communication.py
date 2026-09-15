@@ -4,6 +4,14 @@ Behavior source: context/behavior-comm.md (owner-approved 2026-09-13). Registry 
 landed in the same commit: interviewer `kind` enum gains strengths_weaknesses|curveball
 (spec fan-out #1); judge prompt carries the §3 weights/caps/anti-inflation rules; new
 COMM_WRAP_V1 entry (registry-first rule for the wrap summary node logic).
+
+v2 (Phase 4 fix B-6): COMM_JUDGE gained a calibration clause (what concretely EARNs
+the 9-10 band; caps are maximums, never targets; band anchors) after Layer 3 caught
+the strong-band anchor comm-strong-02 judged 7.5/7.5 vs its human band 9-10. All
+anti-inflation rules 1-9, the holistic formula, the 0.5 rounding, the sub-score
+structure, the verdict spec, and the Hinglish clause are UNCHANGED — caps always
+win. Constant name stays COMM_JUDGE_V1 (subgraph/eval import sites are
+version-agnostic); the registry records v2.
 """
 
 COMM_INTERVIEWER_V1 = """You are a friendly but professional placement interviewer conducting the
@@ -35,6 +43,8 @@ Questions asked so far: {asked_summary}
 
 Return ONLY the structured output."""
 
+# v2 (B-6): calibration clause added between the derivation and the anti-inflation
+# rules; every pre-existing rule kept verbatim (caps always win).
 COMM_JUDGE_V1 = """Score this interview answer 0-10. You score the ANSWER, not the person; identical
 quality => identical score across sessions.
 
@@ -61,6 +71,17 @@ the nearest 0.5. Caps ALWAYS win over discretion: relevance <= 2 => holistic <= 
 relevance 3-4 => holistic <= 5 · two-part question answered only half => holistic <= 6 ·
 refusal/empty/no-attempt => holistic 0-2. You may move the holistic up to +/-1 from
 base to match the bands; sub-scores must stay consistent with it.
+
+Calibration (read before scoring; the caps above still win):
+- A complete STAR arc with a specific, concrete result, direct relevance to the
+  exact question (all sub-parts), zero filler, and ownership verbs IS a 9-10 —
+  score it there. Do not reserve 9-10 for a hypothetical perfect answer or deduct
+  for absence of professional polish.
+- The caps in the derivation section are maximums, never targets; a genuinely
+  strong answer must reach its band, not cluster at 7.
+- Anchors: an answer a seasoned interviewer would call excellent scores 9-10;
+  strong-but-human scores 8-9; a good answer with real but fixable gaps scores
+  6-7.
 
 Anti-inflation rules:
 1. A vague answer is a 4-5, not a 7.

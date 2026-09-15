@@ -161,6 +161,10 @@ def test_returning_user_golden_flow(llm_queues, tmp_path):
     result = app.invoke({"user_message": "hi there"}, config=config)
     assert result["intent"] == "smalltalk"
     msg = result["assistant_message"]
+    # B-3 regression pin: the greeting nodes resolve config.get_llm at CALL time, so the
+    # canned seed is genuinely consumed (before the fix it was a dead seed — the test
+    # silently exercised the templated fallback, or a real provider call with network).
+    assert msg == greet_msg, "canned clarify seed must be consumed via the stub seam"
     assert msg, "turn 1 dead-ended without assistant_message"
     invented = _numerals(msg) - allowed
     assert not invented, f"turn 1 invented numerals: {invented} (allowed: {allowed})"
@@ -169,6 +173,7 @@ def test_returning_user_golden_flow(llm_queues, tmp_path):
     result = app.invoke({"user_message": "how am I doing"}, config=config)
     assert result["intent"] == "progress"
     msg = result["assistant_message"]
+    assert msg == progress_msg, "canned progress_talk seed must be consumed via the stub seam"
     assert msg, "turn 2 dead-ended without assistant_message"
     invented = _numerals(msg) - allowed
     assert not invented, f"turn 2 invented numerals: {invented} (allowed: {allowed})"
@@ -178,6 +183,7 @@ def test_returning_user_golden_flow(llm_queues, tmp_path):
     assert result["intent"] == "exit"
     assert result["session_active"] == "", "farewell must clear session_active"
     msg = result["assistant_message"]
+    assert msg == farewell_msg, "canned farewell seed must be consumed via the stub seam"
     assert msg, "turn 3 dead-ended without assistant_message"
     invented = _numerals(msg) - allowed
     assert not invented, f"turn 3 invented numerals: {invented} (allowed: {allowed})"

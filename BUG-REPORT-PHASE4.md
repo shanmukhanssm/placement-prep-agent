@@ -1,5 +1,11 @@
 # Bug Report — Phase 4.1 Eval Run (2026-09-15)
 
+> **RESOLUTION (2026-09-16): the owner approved fixing. All 8 findings B-1…B-8 are now RESOLVED** —
+> fix summaries are appended under each finding below. Verified by a full live retest: 127/127 pytest ·
+> ruff clean · mypy --strict clean · L1 PASS · L2 24/24 · L3 12/12 · L4 16/16 · L5 9/9 (G1/G2/G3 ×3).
+> Evidence: `evals/results/eval-run-20260915-18*|19*` + `layer5-partial.jsonl` (fresh 9-run ledger).
+> Changes are LOCAL commits only — no push until the owner says so.
+
 Per owner instruction: **all product bugs found by the Phase 4 eval suite are REPORTED, not fixed.**
 Every finding below is evidence-backed from the recorded eval runs in `evals/results/` and
 reproducible probes. Severity reflects impact on the live product, not on the eval suite.
@@ -25,6 +31,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   (structred-output nodes are unaffected: they parse via `_extract_structured`, and DSA/core wrap messages are code-built).
 - Fix direction (NOT applied): use `message.content` (with the existing `str()` fallback), e.g.
   `text = getattr(message, "content", str(message))`.
+- **RESOLVED (2026-09-16):** new `config.message_text()` helper (str content → itself; list-of-blocks → joined; no `.content` → `str(message)` passthrough for plain-str test stubs; unusable → "" keeps the templated-fallback contract) used by both call sites. Layer 4 now 16/16 green.
 
 ## B-2 · HIGH (eval gate correctness vs model behavior)
 
@@ -40,6 +47,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   The grader is strict BY DESIGN (eval-plan: "zero invented or rounded numbers"; "Anchors are never loosened");
   the remediation per eval-plan is a prompt fix (version bump in prompt-registry.md) or a model change — parked.
 - Note: the templated code fallback is number-exact (4/4 fallback cases green) — only the LLM narration path leaks.
+- **RESOLVED (2026-09-16):** prompt lever per eval-plan — GREET_RETURNING / PROGRESS_TALK / FAREWELL bumped with mechanical verbatim-number rules (copy character-for-character INCLUDING the decimal point; no derived/counted numerals; no % / unit attachments) and the invented-literal example ("dipped 12 points") removed; registry v2. Combined with the provider model swap (see B-5 note) Layer 4 is 16/16 and G2 narration is number-clean.
 
 ## B-3 · MEDIUM (test-suite hermeticity / dead test seeds)
 
@@ -58,6 +66,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   2. `comm_wrap` is unaffected (it re-imports `get_llm` inside the function at call time) — an inconsistency
      between the two plain-text call sites.
 - Fix direction (NOT applied): call `config.get_llm(role)` inside `_llm_narrate` (or re-import at call time like comm_wrap).
+- **RESOLVED (2026-09-16):** `_llm_narrate` resolves `config.get_llm` at call time (function-local import, mirroring comm_wrap); module-level binding removed. e2e canned-greeting seeds are now verifiably consumed (verbatim-equality asserts added).
 
 ## B-4 · MEDIUM (test-suite hermeticity — environment-dependent assertion)
 
@@ -72,6 +81,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   `LLM_*` vars for the Layer-1 subprocess (harness-side containment; the test itself is still env-brittle).
 - Fix direction (NOT applied): assert against `config.LLM_REQUEST_TIMEOUT` (env-derived), or pin the default via a
   subprocess with a cleared env (the file already uses that pattern for the blank-env case two tests below).
+- **RESOLVED (2026-09-16):** the test asserts `float(config.LLM_REQUEST_TIMEOUT)`; proven green with `LLM_REQUEST_TIMEOUT=180` exported (the exact env that used to fail deterministically).
 
 ## B-5 · MEDIUM (router quality — Layer 2 gate red)
 
@@ -84,6 +94,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   utterance would start a core-subject viva instead of a DSA session.
 - Fix direction (NOT applied): router-prompt fix (version bump) and/or an owner-signed gold-label change, recorded
   per eval-plan; re-run Layer 2.
+- **RESOLVED (2026-09-16):** ROUTER_CLASSIFY v2 — weakness-phrasing→dsa disambiguation rules + 8-line few-shot block (gold labels unchanged). Layer 2 re-run live: 24/24. NOTE: the original model `qwen/qwen3.5-flash:free` was retired upstream between runs (404 on every call); provider swapped env-only to `deepseek/deepseek-v4.1-flash:free` (seam smoke-verified) before the retest.
 
 ## B-6 · MEDIUM (judge calibration — Layer 3 gate red)
 
@@ -98,6 +109,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   before any prompt change; per eval-plan, anchors are never loosened to make a judge pass.
 - Fix direction (NOT applied): judge-prompt version bump + re-run, or owner-corrected anchor label with a
   progress-tracker record.
+- **RESOLVED (2026-09-16):** COMM_JUDGE v2 calibration clause (what EARNs 9-10 concretely; caps are maximums, never targets; band anchors excellent/strong/good) — anchor labels untouched, anti-inflation rules 1–9 byte-identical. Layer 3 re-run live: 12/12 compliant.
 
 ## B-7 · LOW (onboarding robustness observed live)
 
@@ -113,6 +125,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   The F1 degraded-mode harvester already maps `ai/ml` → aiml — only the normal LLM path's `_normalize` is stricter.
 - Fix direction (NOT applied): widen `_normalize` (e.g. strip punctuation/spaces, accept `ai/ml`, `ai-ml`), and prefer
   the `_WELCOME_TEMPLATE` on the completing turn.
+- **RESOLVED (2026-09-16):** `_normalize("core_subject")` squashes punctuation/spacing and maps ai/ml · ai-ml · ai ml · aiml → aiml, cyber security · cybersecurity → cyber (bare `ai`/`ml` still rejected); the successful persist path always returns `_WELCOME_TEMPLATE` — a stale collector re-ask can never surface. Regression pins added.
 
 ## B-8 · LOW (registry/code drift, no runtime impact)
 
@@ -125,6 +138,7 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
   not enforce. Unbounded output length is also the worst-case turn-latency lever (F2).
 - Fix direction (NOT applied): either wire `max_tokens=…` per role in `get_llm` or amend the registry to mark the
   budgets as advisory.
+- **RESOLVED (2026-09-16):** budgets WIRED in code — `ROLE_MAX_TOKENS` (13 values verified against each registry section row) passed as `max_tokens=` in `get_llm`; registry Model Policy notes code-now-wires status; unit pins sample router_classify=150 / comm_wrap=400 / core_judge=300.
 
 ---
 
@@ -146,6 +160,16 @@ reproducible probes. Severity reflects impact on the live product, not on the ev
 | L3 Judge Consistency | RED 11/12 | B-6 |
 | L4 Number Integrity | RED 4/16 | B-1 + B-2 (fallbacks 4/4 green) |
 | L5 Golden E2E ×3 | RED (G1 3/3 ✓ · G3 3/3 ✓ · G2 3/3 ✗) | B-1 + B-2 on G2's narration check only |
+
+**Post-fix retest (2026-09-16, live, `deepseek/deepseek-v4.1-flash:free`):**
+
+| Layer | Result | Fix verified |
+| --- | --- | --- |
+| L1 Tool & Unit | PASS | B-3/B-4 (127/127 pytest incl. 5 new regression pins) |
+| L2 Intent | PASS 24/24 | B-5 |
+| L3 Judge Consistency | PASS 12/12 | B-6 |
+| L4 Number Integrity | PASS 16/16 | B-1 + B-2 |
+| L5 Golden E2E ×3 | PASS 9/9 (G1 3/3 · G2 3/3 · G3 3/3) | B-1 + B-2 (+ PROGRESS_TALK v2-rev narration example) |
 
 Recommended fix order once the owner approves: **B-1 → B-2 (prompt lever) → re-run L4 → B-3/B-4 (tests) → B-5 (router
 prompt) → re-run L2 → B-6 (judge calibration decision) → re-run L3 → full `--layer all` + L5 ×3.**

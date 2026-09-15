@@ -17,10 +17,10 @@ from evals.harness import REPO_ROOT, LayerResult, Row
 
 # Vars the runner may have loaded from .env — NOT inherited by the Layer-1 pytest
 # subprocess. The unit suite is hermetic by design (code-standards.md: unit tests
-# never hit the network; conftest seeds LLM_API_KEY itself), and
-# test_get_llm_bounds_request_timeout_and_retries pins the config DEFAULT timeout
-# (60.0) — an inherited LLM_REQUEST_TIMEOUT (e.g. the .env.example's own 180)
-# would break that pin. Layer 1 always runs against config defaults.
+# never hit the network; conftest seeds LLM_API_KEY itself). Since the B-4 fix
+# test_get_llm_bounds_request_timeout_and_retries pins the env-derived
+# config.LLM_REQUEST_TIMEOUT (no longer the hardcoded 60.0 default), but Layer 1
+# still always runs against config defaults — sanitization kept for hermeticity.
 _SANITIZED_ENV_KEYS = ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL", "LLM_REQUEST_TIMEOUT")
 
 

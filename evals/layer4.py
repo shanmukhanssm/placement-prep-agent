@@ -49,24 +49,24 @@ def _run_live_node(node, fixture: dict, user_message: str) -> tuple[str, bool]:
 
 
 def _run_fallback_greeting(fixture: dict) -> str:
-    """Code-only templated greeting: `get_llm` forced to raise inside the node module.
+    """Code-only templated greeting: `get_llm` forced to raise inside config.
 
-    NOTE the seam: prep_agent.nodes.greetings binds `get_llm` at import time, so the
-    patch must land on `prep_agent.nodes.greetings.get_llm` (patching
-    `config.get_llm` would NOT be seen by the node). Restored in a finally.
+    NOTE the seam (post B-3 fix): ``_llm_narrate`` resolves ``config.get_llm`` at
+    CALL time, so patching ``config.get_llm`` IS seen by the node — the old
+    import-time node-module binding no longer exists. Restored in a finally.
     """
-    from prep_agent.nodes import greetings as greetings_module
-
-    original = greetings_module.get_llm
+    import prep_agent.config as prep_config
+    from prep_agent.nodes.greetings import greet_returning
 
     def _boom(_role: str):
         raise RuntimeError("[eval] forced LLM outage — templated fallback under test")
 
-    greetings_module.get_llm = _boom
+    original = prep_config.get_llm
+    prep_config.get_llm = _boom
     try:
-        result = greetings_module.greet_returning(_state_for(fixture, "hello again"))
+        result = greet_returning(_state_for(fixture, "hello again"))
     finally:
-        greetings_module.get_llm = original
+        prep_config.get_llm = original
     return str(result.get("assistant_message", ""))
 
 
