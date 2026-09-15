@@ -1,0 +1,24 @@
+{"id": "dsa-explicit-01", "utterance": "I want to practice DSA", "gold": "dsa", "bucket": "explicit dsa"}
+{"id": "dsa-explicit-02", "utterance": "give me a coding problem", "gold": "dsa", "bucket": "explicit dsa"}
+{"id": "dsa-explicit-03", "utterance": "let's solve a leetcode problem", "gold": "dsa", "bucket": "explicit dsa"}
+{"id": "dsa-explicit-04", "utterance": "I want to attempt an algorithm", "gold": "dsa", "bucket": "explicit dsa"}
+{"id": "dsa-indirect-01", "utterance": "my arrays are weak", "gold": "dsa", "bucket": "indirect dsa"}
+{"id": "dsa-indirect-02", "utterance": "I need to work on dynamic programming", "gold": "dsa", "bucket": "indirect dsa"}
+{"id": "dsa-indirect-03", "utterance": "let's do a problem on graphs", "gold": "dsa", "bucket": "indirect dsa"}
+{"id": "dsa-indirect-04", "utterance": "quiz me on a coding challenge", "gold": "dsa", "bucket": "indirect dsa"}
+{"id": "comm-01", "utterance": "help me get better at talking in interviews", "gold": "communication", "bucket": "communication"}
+{"id": "comm-02", "utterance": "I want to practice HR questions", "gold": "communication", "bucket": "communication"}
+{"id": "comm-03", "utterance": "let's do a mock interview for behaviorals", "gold": "communication", "bucket": "communication"}
+{"id": "core-01", "utterance": "quiz me on my core subject theory", "gold": "core_subject", "bucket": "core_subject"}
+{"id": "core-02", "utterance": "ask me about AIML concepts", "gold": "core_subject", "bucket": "core_subject"}
+{"id": "core-03", "utterance": "I want to revise cybersecurity", "gold": "core_subject", "bucket": "core_subject"}
+{"id": "core-04", "utterance": "explain greedy algorithm", "gold": "core_subject", "bucket": "core_subject — adjacent trap: theory request, NOT a dsa problem"}
+{"id": "progress-01", "utterance": "how am I doing", "gold": "progress", "bucket": "progress"}
+{"id": "progress-02", "utterance": "am I improving in dsa", "gold": "progress", "bucket": "progress"}
+{"id": "progress-03", "utterance": "show me my score trend", "gold": "progress", "bucket": "progress"}
+{"id": "smalltalk-01", "utterance": "thanks!", "gold": "smalltalk", "bucket": "smalltalk"}
+{"id": "smalltalk-02", "utterance": "hey there", "gold": "smalltalk", "bucket": "smalltalk"}
+{"id": "smalltalk-03", "utterance": "good morning coach", "gold": "smalltalk", "bucket": "smalltalk"}
+{"id": "exit-01", "utterance": "bye", "gold": "exit", "bucket": "exit"}
+{"id": "exit-02", "utterance": "I want to stop", "gold": "exit", "bucket": "exit"}
+{"id": "exit-03", "utterance": "see you later", "gold": "exit", "bucket": "exit"}

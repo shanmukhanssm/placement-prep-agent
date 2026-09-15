@@ -181,3 +181,16 @@ No LLM-as-judge grader in Layer 5 — every deciding grader is deterministic cod
 - If still borderline after the rerun: record the run + caveat in `progress-tracker.md`; **never silently pass**.
 - A red run inside a Layer-5 3× set invalidates the set: fix, then rerun all 3 runs for that case — partial greens do not carry over.
 - Provider-side failures (rate limit, 5xx) invalidate the run rather than failing it: back off, rerun, record both attempts. The parked judge-tier lever (`llama-3.1-8b-instant`) is never auto-activated to make an eval pass.
+
+---
+
+## Implementation Notes (Phase 4.1, 2026-09-15)
+
+Recorded in the same commit as the suite; no threshold, layer, or dataset-size change — this block pins the concrete artifact shapes the runner consumes.
+
+- **Datasets:** `evals/datasets/intent_set.jsonl` (24 rows: `id`/`utterance`/`gold`/`bucket` — the intake composition incl. the "explain greedy algorithm" trap) · `evals/datasets/judge_anchors.jsonl` (12 rows: `rubric` ∈ {comm, core}, `band_low`/`band_high` human-labeled interval, core anchors carry `expected_answer_points`; bands 9-10 / 6-7 / 3-4 (comm) and 9-10 / 6-7, 7-8 / 3-4 (core) — labels written by the eval author as owner-proxy, owner review owed) · `evals/datasets/number_fixtures/mix-{1..4}-*.json` (frozen `trend_summary` + profile; covers all four verdicts) · `evals/datasets/golden_cases/g{1,2,3}.json` (seed spec + scripted turns + property list).
+- **Layer 2 runs the standalone `router_classify` call** (structured `IntentClassification`, temp 0.0) exactly as production builds it — no graph, no normalization: predicted == gold.
+- **Layer 3 calls the registered judge prompts verbatim** (`COMM_JUDGE_V1` / `CORE_JUDGE_V2` via `call_structured`) — no evals-only grader prompt exists, so `prompt-registry.md` gains no `evals-only` entries.
+- **Layer 4 extends the same numeral harness to `farewell`** (sanctioned by the L4 note above) → 4 mixes × {greet, progress, farewell, fallback greeting} = 16 checks. The forced-fallback seam patches `prep_agent.nodes.greetings.get_llm` (the node module binds `get_llm` at import; patching `config.get_llm` alone is not seen by the nodes).
+- **G2 trend-narration verdict check** implements "greeting verdicts == compute_trend(seeded scores)" via per-verdict phrasing families (e.g. flat → flat/steady/stable/…; not_enough_data → "not enough"/"needs more sessions"/…, matching the prompt's own example phrasing) — the numeral check stays strictly verbatim.
+- **Runner details:** `evals/run.py --layer <n|all>`; results saved to `evals/results/eval-run-<ts>.json|.md`; borderline L2 (23/24) / L3 (one non-compliant anchor) trigger exactly one layer rerun, second result stands; provider-fault invalidation (back off, rerun once, record both attempts) lives in `evals/harness.py`; Layer-1 runs `pytest -m unit` in a sanitized env (no `LLM_*` inheritance — see progress-tracker caveat).

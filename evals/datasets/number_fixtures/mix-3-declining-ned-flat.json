@@ -1,0 +1,17 @@
+{
+  "id": "mix-3-declining-ned-flat",
+  "covers": ["declining", "not_enough_data", "flat"],
+  "profile": {
+    "name": "Rahul",
+    "degree_branch": "B.Tech ECE",
+    "grad_year": 2028,
+    "target_roles": ["Embedded SDE"],
+    "weak_areas": ["graphs", "dynamic programming"],
+    "core_subject": "aiml"
+  },
+  "trend_summary": {
+    "dsa": {"field": "dsa", "avg_last3": 50.0, "avg_prev3": 72.0, "overall_avg": 61.0, "verdict": "declining"},
+    "communication": {"field": "communication", "avg_last3": null, "avg_prev3": null, "overall_avg": null, "verdict": "not_enough_data"},
+    "core_subject": {"field": "core_subject", "avg_last3": 75.0, "avg_prev3": 73.0, "overall_avg": 74.0, "verdict": "flat"}
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "G3",
+  "scenario": "full communication session: 8-10 scored questions -> one normalized record",
+  "seed": {
+    "profile": {
+      "name": "Meera",
+      "degree_branch": "B.Tech CSE",
+      "grad_year": 2027,
+      "target_roles": ["SDE", "Backend Engineer"],
+      "weak_areas": ["speaking nervously"],
+      "core_subject": "aiml"
+    },
+    "report_card": true,
+    "history": []
+  },
+  "entry_turn": "help me get better at talking in interviews",
+  "answers": [
+    "I recently finished my third year of computer science at NIT Trichy, and this semester I led our four-person capstone team building a campus lost-and-found app. I split the modules, ran short weekly check-ins, and handled the final integration myself, which is the experience that has shaped me the most so far.",
+    "In our mini project one teammate stopped responding for two weeks right before the deadline. I called him directly, found out he was stuck on the UI, and paired with him over one weekend to finish his screens. We submitted on time and the reviewers specifically praised the interface.",
+    "During my second year I completely misjudged the effort for a compiler assignment and started only three days before the deadline. I owned it, told the professor honestly, and negotiated one extra day, then built a proper schedule with checkpoints. I have not misjudged a deadline that badly since.",
+    "When our tech-fest workshop lost its scheduled speaker a day before the event, I took charge of the session myself, restructured it into a hands-on demo, and asked two seniors to help judge the accompanying contest. About eighty students attended and the feedback averaged four point five out of five.",
+    "First I would talk to him privately and understand whether it is motivation or something personal, because the fix differs. Then I would reset the split so he owns one clear deliverable with a check-in every second day. If there is still no movement after that, I would escalate to our guide early rather than hide the risk.",
+    "I would start by reproducing the problem and writing down the exact steps, then read the existing documentation before changing anything. I would fix the two most misleading sections first, add one small worked example for each, and ask a senior developer to review my rewrite before it goes in.",
+    "My real strength is debugging under pressure — I enjoy tracing a problem down to its root cause instead of patching symptoms. My genuine weakness is public speaking; my hands used to shake in seminars. I have been volunteering for class presentations this year and preparing twice as long, and it has visibly improved.",
+    "If my classmates picked three words I believe they would say reliable, curious and stubborn. I would happily agree with the first two. The stubbornness shows up when I believe a design is right, but I have learned to write my objection down, go with the team's choice, and revisit it later with data.",
+    "You should hire me because I finish things. In every team project I took the least glamorous module and carried it to done, and I learn new tools fast — I picked up Git and Docker inside a single project cycle. I am also honest about what I do not know yet, which means I ask early.",
+    "Yes — could you tell me what a new joiner's first assignment usually looks like here, and how interns receive feedback during the first month? I want to plan how I would contribute early rather than spend weeks finding my feet.",
+    "I think that covers everything from my side — thank you for the conversation so far, I enjoyed it."
+  ],
+  "answer_strategy": "driver feeds answers one per turn while session_active == 'communication'; the session wraps within 10 asked questions (hard stop) or earlier via run-thin; the closing reverse question's reply is answer 10",
+  "key_properties": [
+    "8-10 questions asked; every answer carries a 0-10 score (no un-scored answers)",
+    "exactly one history record with normalized score == mean × 10",
+    "report-card communication score list +1"
+  ]
+}

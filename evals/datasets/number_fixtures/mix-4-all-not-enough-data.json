@@ -1,0 +1,17 @@
+{
+  "id": "mix-4-all-not-enough-data",
+  "covers": ["not_enough_data"],
+  "profile": {
+    "name": "Sneha",
+    "degree_branch": "B.Tech CSE",
+    "grad_year": 2029,
+    "target_roles": ["Data Analyst"],
+    "weak_areas": ["SQL"],
+    "core_subject": "cyber"
+  },
+  "trend_summary": {
+    "dsa": {"field": "dsa", "avg_last3": null, "avg_prev3": null, "overall_avg": null, "verdict": "not_enough_data"},
+    "communication": {"field": "communication", "avg_last3": null, "avg_prev3": null, "overall_avg": null, "verdict": "not_enough_data"},
+    "core_subject": {"field": "core_subject", "avg_last3": null, "avg_prev3": null, "overall_avg": null, "verdict": "not_enough_data"}
+  }
+}

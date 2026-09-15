@@ -1,0 +1,23 @@
+{
+  "id": "G1",
+  "scenario": "brand-new user: 6-field onboarding -> first DSA session",
+  "seed": {
+    "profile": null,
+    "report_card": false,
+    "history": []
+  },
+  "onboarding_turns": ["hi there!", "Arjun", "B.Tech CSE", "2027", "SDE", "arrays, greedy", "aiml"],
+  "expected_profile": {
+    "core_subject_in": ["aiml", "cyber"],
+    "weak_areas": ["arrays", "greedy"]
+  },
+  "session_entry": "I want to practice DSA",
+  "attempt_strategy": "driver composes a strong attempt from the catalog entry the deterministic selector picks (optimized_approach + stated time/space complexity + one reference edge case); if attempt 1 is not a pass the driver says 'I give up' — pass, give-up and max-attempts are all acceptable terminations per the case property",
+  "give_up_phrase": "I give up",
+  "key_properties": [
+    "profile.json (6 fields, core_subject ∈ {aiml, cyber}) created",
+    "report-card.json created (schema_version 1)",
+    "exactly one SessionRecord in data/history/",
+    "DSA session ends pass (≥80) / give-up / 3 attempts — termination observable in the record"
+  ]
+}

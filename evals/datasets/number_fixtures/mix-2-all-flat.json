@@ -1,0 +1,17 @@
+{
+  "id": "mix-2-all-flat",
+  "covers": ["flat"],
+  "profile": {
+    "name": "Priya",
+    "degree_branch": "B.Tech IT",
+    "grad_year": 2026,
+    "target_roles": ["Backend Engineer", "SDE"],
+    "weak_areas": ["operating systems", "speaking nervously"],
+    "core_subject": "cyber"
+  },
+  "trend_summary": {
+    "dsa": {"field": "dsa", "avg_last3": 70.0, "avg_prev3": 69.0, "overall_avg": 69.5, "verdict": "flat"},
+    "communication": {"field": "communication", "avg_last3": 72.0, "avg_prev3": 70.0, "overall_avg": 71.0, "verdict": "flat"},
+    "core_subject": {"field": "core_subject", "avg_last3": 68.0, "avg_prev3": 66.0, "overall_avg": 67.5, "verdict": "flat"}
+  }
+}

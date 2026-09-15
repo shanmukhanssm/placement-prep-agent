@@ -1,0 +1,17 @@
+{
+  "id": "mix-1-improving-flat-ned",
+  "covers": ["improving", "flat", "not_enough_data"],
+  "profile": {
+    "name": "Arjun",
+    "degree_branch": "B.Tech CSE",
+    "grad_year": 2027,
+    "target_roles": ["SDE"],
+    "weak_areas": ["arrays"],
+    "core_subject": "aiml"
+  },
+  "trend_summary": {
+    "dsa": {"field": "dsa", "avg_last3": 75.0, "avg_prev3": 55.0, "overall_avg": 65.0, "verdict": "improving"},
+    "communication": {"field": "communication", "avg_last3": 72.0, "avg_prev3": 70.0, "overall_avg": 71.5, "verdict": "flat"},
+    "core_subject": {"field": "core_subject", "avg_last3": null, "avg_prev3": null, "overall_avg": null, "verdict": "not_enough_data"}
+  }
+}

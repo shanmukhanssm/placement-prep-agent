@@ -1,0 +1,42 @@
+{
+  "id": "G2",
+  "scenario": "returning user: trend greeting -> DSA session to pass or give-up",
+  "seed": {
+    "profile": {
+      "name": "Arjun",
+      "degree_branch": "B.Tech CSE",
+      "grad_year": 2027,
+      "target_roles": ["SDE"],
+      "weak_areas": ["arrays", "dynamic programming"],
+      "core_subject": "aiml"
+    },
+    "report_card": true,
+    "history": [
+      {"date": "2026-09-01", "field": "dsa", "topic": "arrays", "score": 50.0, "duration_min": 20.0, "question": "seeded dsa session 1"},
+      {"date": "2026-09-02", "field": "dsa", "topic": "strings", "score": 55.0, "duration_min": 20.0, "question": "seeded dsa session 2"},
+      {"date": "2026-09-03", "field": "communication", "topic": "HR Interview", "score": 70.0, "duration_min": 15.0, "question": "seeded comm session 1"},
+      {"date": "2026-09-04", "field": "dsa", "topic": "dp-basics", "score": 60.0, "duration_min": 20.0, "question": "seeded dsa session 3"},
+      {"date": "2026-09-05", "field": "communication", "topic": "HR Interview", "score": 72.0, "duration_min": 15.0, "question": "seeded comm session 2"},
+      {"date": "2026-09-06", "field": "dsa", "topic": "arrays", "score": 70.0, "duration_min": 20.0, "question": "seeded dsa session 4"},
+      {"date": "2026-09-07", "field": "communication", "topic": "HR Interview", "score": 71.0, "duration_min": 15.0, "question": "seeded comm session 3"},
+      {"date": "2026-09-08", "field": "dsa", "topic": "two-pointers", "score": 75.0, "duration_min": 20.0, "question": "seeded dsa session 5"},
+      {"date": "2026-09-09", "field": "communication", "topic": "HR Interview", "score": 73.0, "duration_min": 15.0, "question": "seeded comm session 4"},
+      {"date": "2026-09-10", "field": "dsa", "topic": "arrays", "score": 80.0, "duration_min": 20.0, "question": "seeded dsa session 6"}
+    ]
+  },
+  "expected_trend_verdicts": {
+    "dsa": "improving",
+    "communication": "flat",
+    "core_subject": "not_enough_data"
+  },
+  "turns": ["hi", "how am I doing", "I want to practice DSA"],
+  "narration_turn_index": 1,
+  "attempt_strategy": "driver composes a strong attempt from the catalog entry the deterministic selector picks over the seeded history; if it does not pass, 'I give up' ends the session — both endings satisfy the case property",
+  "give_up_phrase": "I give up",
+  "key_properties": [
+    "greeting/progress narration states the correct trend verdicts (== compute_trend of the seeded scores)",
+    "narration passes the Layer-4 numeral check (numerals ⊆ injected trend_summary JSON)",
+    "DSA session ends pass (optimality ≥ 80) or explicit give-up",
+    "exactly ONE new history record appended; report-card dsa scores list +1"
+  ]
+}
