@@ -34,6 +34,15 @@ POST_TURNS: list[tuple[str, dict]] = [
 @pytest.mark.e2e
 def test_skeleton_e2e_scripted_conversation(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [dict(t) for _, t in ONBOARDING_TURNS]
+    # Phase 3.1: router_classify is now a real LLM call — seed 3 classifications
+    # for the post-onboarding turns (dsa, progress, exit). The 2nd + 3rd turns
+    # are session_active pins, no LLM. greet/progress/farewell queues left empty
+    # on purpose — the templated fallback kicks in (and is non-empty).
+    llm_queues["router_classify"] = [
+        {"intent": "dsa", "confidence": 0.95},  # turn 8: "let's do a dsa problem"
+        {"intent": "progress", "confidence": 0.92},  # turn 11: "how am I doing?"
+        {"intent": "exit", "confidence": 0.97},  # turn 12: "bye"
+    ]
     llm_queues["dsa_selector"] = [
         {
             "statement": "Given an array and a target, return two indices summing to it.",
@@ -94,6 +103,11 @@ def test_skeleton_e2e_scripted_conversation(llm_queues, tmp_path):
 @pytest.mark.e2e
 def test_skeleton_routes_all_intent_branches(llm_queues, tmp_path):
     llm_queues["onboarding_collector"] = [dict(t) for _, t in ONBOARDING_TURNS]
+    # Phase 3.1: 2 router_classify calls — smalltalk (turn 9) + core_subject (turn 10)
+    llm_queues["router_classify"] = [
+        {"intent": "smalltalk", "confidence": 0.85},  # "hmm interesting"
+        {"intent": "core_subject", "confidence": 0.94},  # "quiz me on my core subject theory"
+    ]
     app = build_graph(make_sqlite_checkpointer(str(tmp_path / "cp.sqlite")))
     config = {
         "configurable": {"thread_id": "test:skeleton-branches"},
@@ -107,12 +121,12 @@ def test_skeleton_routes_all_intent_branches(llm_queues, tmp_path):
         result = app.invoke({"user_message": message}, config=config)
     assert result["has_profile"] is True
 
-    # smalltalk bucket → clarify (stub keyword miss on a profiled thread)
+    # smalltalk bucket → clarify (Phase 3.1: LLM returns smalltalk, router normalizes)
     result = app.invoke({"user_message": "hmm interesting"}, config=config)
     assert result["intent"] == "smalltalk"
     assert result["assistant_message"]
 
-    # core_subject branch fires from keywords on a profiled thread
+    # core_subject branch fires from the LLM classification on a profiled thread
     result = app.invoke({"user_message": "quiz me on my core subject theory"}, config=config)
     assert result["intent"] == "core_subject"
     assert result["assistant_message"]

@@ -51,6 +51,19 @@ class TrendVerdict(BaseModel):
     verdict: Literal["improving", "flat", "declining", "not_enough_data"]
 
 
+class IntentClassification(BaseModel):
+    """router_classify structured output (prompt-registry.md).
+
+    ``confidence < CONFIDENCE_FLOOR`` (config.py, 0.6) is normalized to
+    ``intent="smalltalk"`` INSIDE route_turn so the conditional edge stays a
+    pure string match (graph-design.md edge table). The LLM never emits
+    "smalltalk" directly for low-confidence — the code does the normalization.
+    """
+
+    intent: Literal["dsa", "communication", "core_subject", "progress", "smalltalk", "exit"]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class MainState(BaseModel):
     """Root graph state — one invocation per user message; paths set assistant_message, then END."""
 

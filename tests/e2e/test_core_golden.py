@@ -71,6 +71,7 @@ def test_core_golden_session(llm_queues, tmp_path):
     for message in ONBOARDING_ANSWERS:
         app.invoke({"user_message": message}, config=config)
 
+    llm_queues["router_classify"] = [{"intent": "core_subject", "confidence": 0.95}]
     llm_queues["core_examiner"] = [_question(n) for n in range(1, 11)]
     llm_queues["core_judge"] = [_score(7) for _ in range(10)]
     result = app.invoke({"user_message": "quiz me on my core subject"}, config=config)

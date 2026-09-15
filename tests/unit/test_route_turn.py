@@ -1,9 +1,14 @@
-"""route_turn decision-order + stub-classifier tests (H4) and the F2 client-timeout seam.
+"""route_turn decision-order tests + LLM-stub classification tests (Phase 3.1).
 
-Router: the deterministic gates (session pin → profile gate → classify) are asserted
-in order, and the stub classifier is asserted to use longest-keyword-sum scoring —
-the H4 regression is "i have a communication problem", which the old dict-order
-first-match loop misrouted to dsa ("problem" checked before "communication").
+The deterministic gates (session pin → profile gate) are still asserted in order,
+and the LLM classify is asserted via the ``llm_queues`` fixture (offline StubLLM).
+Low-confidence normalization (→ smalltalk) and double-failure fallback (→ smalltalk)
+are also asserted — the router never crashes a turn.
+
+The old keyword-classifier tests are gone (Phase 3.1 replaced the keyword stub
+with the real LLM classifier); the H4 regression ("i have a communication problem")
+is now covered by the intent seed set in ``tests/e2e/test_router_golden.py``,
+where the LLM is canned to return the gold intent for each utterance.
 """
 
 import pytest
@@ -20,42 +25,65 @@ def _state(text: str, *, has_profile: bool = True, session_active: str = "") -> 
     return MainState(has_profile=has_profile, session_active=session_active, user_message=text)
 
 
-def test_h4_regression_communication_beats_problem() -> None:
-    # H4: "problem" (len 7, dsa) must not beat "communication" (len 13) — longest-
-    # keyword-sum scoring routes the message to communication regardless of dict order.
-    assert route_turn(_state("i have a communication problem"))["intent"] == "communication"
-
-
-def test_dsa_message_routes_to_dsa() -> None:
-    assert route_turn(_state("give me a dsa problem"))["intent"] == "dsa"
-
-
-def test_core_subject_message_routes_to_core_subject() -> None:
-    assert route_turn(_state("let's do core subject theory"))["intent"] == "core_subject"
-
-
-def test_score_trend_message_routes_to_progress() -> None:
-    assert route_turn(_state("how is my score trend"))["intent"] == "progress"
-
-
-def test_bye_routes_to_exit() -> None:
-    assert route_turn(_state("bye"))["intent"] == "exit"
-
-
-def test_no_keyword_hits_falls_back_to_smalltalk() -> None:
-    assert route_turn(_state("hello there"))["intent"] == "smalltalk"
+# --- deterministic gates (no LLM, no fixture) ---
 
 
 def test_active_session_pins_intent_before_classification() -> None:
-    # deterministic gate 1: a pinned session is never re-classified mid-session
+    # gate 1: a pinned session is never re-classified mid-session
     state = _state("bye for now", session_active="dsa")
     assert route_turn(state)["intent"] == "dsa"
 
 
 def test_missing_profile_gates_to_onboarding_before_classification() -> None:
-    # deterministic gate 2: no profile → onboarding before any keyword runs
+    # gate 2: no profile → onboarding before any LLM call
     state = _state("let's do a dsa problem", has_profile=False)
     assert route_turn(state)["intent"] == "onboarding"
+
+
+# --- LLM classify (offline via llm_queues) ---
+
+
+def test_classify_routes_to_dsa(llm_queues) -> None:
+    llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]
+    assert route_turn(_state("give me a dsa problem"))["intent"] == "dsa"
+
+
+def test_classify_routes_to_communication(llm_queues) -> None:
+    llm_queues["router_classify"] = [{"intent": "communication", "confidence": 0.9}]
+    assert route_turn(_state("help me with HR questions"))["intent"] == "communication"
+
+
+def test_classify_routes_to_core_subject(llm_queues) -> None:
+    llm_queues["router_classify"] = [{"intent": "core_subject", "confidence": 0.92}]
+    assert route_turn(_state("quiz me on aiml theory"))["intent"] == "core_subject"
+
+
+def test_classify_routes_to_progress(llm_queues) -> None:
+    llm_queues["router_classify"] = [{"intent": "progress", "confidence": 0.88}]
+    assert route_turn(_state("how am I doing"))["intent"] == "progress"
+
+
+def test_classify_routes_to_exit(llm_queues) -> None:
+    llm_queues["router_classify"] = [{"intent": "exit", "confidence": 0.97}]
+    assert route_turn(_state("bye for now"))["intent"] == "exit"
+
+
+def test_classify_routes_to_smalltalk(llm_queues) -> None:
+    # high-confidence smalltalk — the LLM genuinely thinks it's smalltalk
+    llm_queues["router_classify"] = [{"intent": "smalltalk", "confidence": 0.85}]
+    assert route_turn(_state("thanks!"))["intent"] == "smalltalk"
+
+
+def test_low_confidence_normalizes_to_smalltalk(llm_queues) -> None:
+    # confidence < CONFIDENCE_FLOOR (0.6) → normalized to smalltalk INSIDE the node
+    llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.4}]
+    assert route_turn(_state("hmm interesting"))["intent"] == "smalltalk"
+
+
+def test_classifier_failure_falls_back_to_smalltalk(llm_queues) -> None:
+    # call_structured retries once on failure — two queued Exceptions = both fail
+    llm_queues["router_classify"] = [Exception("llm down"), Exception("llm down")]
+    assert route_turn(_state("anything"))["intent"] == "smalltalk"
 
 
 # --- F2: the one LLM client factory must bound request time (config.py) ---

@@ -67,6 +67,7 @@ def test_dsa_pass_path_e2e(llm_queues, tmp_path):
     app = _fresh_app(tmp_path)
     config = {"configurable": {"thread_id": "dsa-pass"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
+    llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
     llm_queues["dsa_selector"] = [
         {
             "statement": "Pick pairs summing to a target.",
@@ -94,6 +95,7 @@ def test_dsa_give_up_path_e2e(llm_queues, tmp_path):
     app = _fresh_app(tmp_path)
     config = {"configurable": {"thread_id": "dsa-giveup"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
+    llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
     llm_queues["dsa_selector"] = [
         {
             "statement": "Statement.",
@@ -119,6 +121,7 @@ def test_dsa_max_attempts_path_e2e(llm_queues, tmp_path):
     app = _fresh_app(tmp_path)
     config = {"configurable": {"thread_id": "dsa-max"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
+    llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
     llm_queues["dsa_selector"] = [
         {
             "statement": "Statement.",

@@ -69,6 +69,7 @@ def test_comm_golden_session(llm_queues, tmp_path):
         app.invoke({"user_message": message}, config=config)
 
     # full comm session: Q1 then 10 answers (judge + interviewer), then the wrap
+    llm_queues["router_classify"] = [{"intent": "communication", "confidence": 0.95}]
     llm_queues["comm_interviewer"] = [_question(n) for n in range(1, 11)]
     llm_queues["comm_judge"] = [_score(7) for _ in range(10)]
     llm_queues["comm_wrap"] = [

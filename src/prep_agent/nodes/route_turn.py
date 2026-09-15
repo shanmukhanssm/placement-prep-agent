@@ -1,50 +1,61 @@
-"""route_turn — the SINGLE routing owner. PHASE 0 STUB.
+"""route_turn — the SINGLE routing owner. REAL (Phase 3.1).
 
-Real LLM classification (ROUTER_CLASSIFY_V1, temp 0.0, structured IntentClassification,
-one validation retry) lands in Phase 3.1. The decision ORDER is already final here and
-is the guard library-docs.md flags: session_active pin → profile gate → classify.
-Low confidence normalizes to smalltalk INSIDE the node so the conditional edge stays a
-pure string match.
+Decision order is sacred (graph-design.md edge table, library-docs.md sharp edge):
+  1. ``session_active`` pin — mid-session turns are NEVER re-classified; the
+     classifier must not see "ok, next question" or it can read it as smalltalk
+     and collapse the session.
+  2. ``has_profile == False`` — deterministic gate to onboarding before any
+     LLM call.
+  3. LLM intent classification via ``ROUTER_CLASSIFY_V1`` (temp 0.0, structured
+     ``IntentClassification``). Exactly one validation retry inside
+     ``call_structured``; on second failure the node falls back to
+     ``intent="smalltalk"`` (routes to clarify) — the router never crashes a turn.
 
-The stub classifier scores every intent by the SUM of its keyword lengths present in
-the message and picks the highest (H4 fix): first-match dict order let "problem" (dsa)
-beat "communication" in "I have a communication problem". Longest-keyword-sum scoring
-is deterministic and order-independent.
+Low-confidence (``confidence < CONFIDENCE_FLOOR``) is normalized to
+``intent="smalltalk"`` INSIDE this node so the conditional edge
+(``route_intent`` in graph.py) stays a pure string match — the edge never
+inspects confidence.
 """
 
+import logging
 from typing import Any
 
-from prep_agent.state import MainState
+from prep_agent.config import CONFIDENCE_FLOOR, call_structured
+from prep_agent.prompts.router import ROUTER_CLASSIFY_V1
+from prep_agent.state import IntentClassification, MainState
 
-# STUB (Phase 0): keyword table stands in for the LLM classifier (no network in tests).
-_STUB_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "dsa": ("dsa", "problem", "algorithm", "coding", "leetcode"),
-    "communication": ("communication", "interview", "hr ", "speak", "talking"),
-    "core_subject": ("core", "subject", "aiml", "cyber", "theory"),
-    "progress": ("how am i", "progress", "improving", "score", "trend"),
-    "exit": ("bye", "exit", "quit", "goodbye", "see you"),
-}
+logger = logging.getLogger("route_turn")
 
 
 def route_turn(state: MainState) -> dict[str, Any]:
-    """Pick this turn's handler; writes ONLY intent (topology table).
+    """Pick this turn's handler; writes ONLY ``intent`` (topology table).
 
-    STUB (Phase 0): keyword classification. Deterministic gates first:
-    active session pins the intent (mid-session turns are never re-classified);
-    no profile routes to onboarding before any classification runs.
+    Deterministic gates first (session pin → profile gate), then exactly one
+    LLM classification with the single retry owned by ``call_structured``.
     """
-    if state.session_active:  # deterministic pin BEFORE classification — decision order is sacred
+    # gate 1 — active session pins the intent (mid-session turns are never re-classified)
+    if state.session_active:
         return {"intent": state.session_active}
+
+    # gate 2 — no profile routes to onboarding before any classification runs
     if not state.has_profile:
         return {"intent": "onboarding"}
-    return {"intent": _classify(state.user_message.lower())}
 
+    # gate 3 — LLM intent classification (one structured call + one retry)
+    prompt = ROUTER_CLASSIFY_V1.format(user_message=state.user_message)
+    result = call_structured("router_classify", IntentClassification, prompt)
+    if result is None:
+        # call_structured already retried once — fall back to clarify, never crash
+        logger.warning("[route_turn] classifier failed twice — falling back to smalltalk")
+        return {"intent": "smalltalk"}
 
-def _classify(text: str) -> str:
-    """Stub classifier: longest-keyword-sum scoring beats dict-order misroutes (H4)."""
-    best_intent, best_score = "smalltalk", 0
-    for intent, keywords in _STUB_KEYWORDS.items():
-        score = sum(len(k) for k in keywords if k in text)
-        if score > best_score:
-            best_intent, best_score = intent, score
-    return best_intent
+    # normalize low confidence INSIDE the node — the edge stays a pure string match
+    if result.confidence < CONFIDENCE_FLOOR:
+        logger.info(
+            "[route_turn] low confidence %s on %r → smalltalk",
+            result.confidence,
+            state.user_message[:40],
+        )
+        return {"intent": "smalltalk"}
+
+    return {"intent": result.intent}
