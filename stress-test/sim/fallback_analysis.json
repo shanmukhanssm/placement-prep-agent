@@ -1,0 +1,176 @@
+{
+ "shim": {
+  "succ": 141,
+  "tools": {
+   "TOOL_OK": 134,
+   "-": 7
+  },
+  "errors": 141,
+  "sdk429": 423,
+  "recover_est": 0,
+  "lat_p50": 958,
+  "lat_p95": 6833,
+  "storm_minutes": {
+   "2026-09-17T10:46": 70,
+   "2026-09-17T10:56": 40,
+   "2026-09-17T11:07": 31
+  }
+ },
+ "transcripts": {
+  "rude": {
+   "turns": 33,
+   "intent_counts": {
+    "'onboarding'": 8,
+    "'smalltalk'": 8,
+    "'dsa'": 4,
+    "'progress'": 1,
+    "'communication'": 12
+   },
+   "markers": {
+    "clarify_fail": 8,
+    "greet_fail*": 0,
+    "farewell_fail*": 0,
+    "dsa_evaluator_fail": 0,
+    "dsa_selector_fail": 0,
+    "core_examiner_fail": 0,
+    "comm_interviewer_fail*": 1,
+    "comm_all_judge_fail": 0,
+    "comm_wrap_fail": 0,
+    "progress_fail": 0,
+    "disk_save_fail": 0
+   },
+   "crashes": 0
+  },
+  "chaotic": {
+   "turns": 40,
+   "intent_counts": {
+    "'onboarding'": 10,
+    "'smalltalk'": 11,
+    "'dsa'": 4,
+    "'communication'": 7,
+    "'exit'": 1,
+    "'core_subject'": 7
+   },
+   "markers": {
+    "clarify_fail": 10,
+    "greet_fail*": 0,
+    "farewell_fail*": 0,
+    "dsa_evaluator_fail": 0,
+    "dsa_selector_fail": 0,
+    "core_examiner_fail": 0,
+    "comm_interviewer_fail*": 0,
+    "comm_all_judge_fail": 0,
+    "comm_wrap_fail": 0,
+    "progress_fail": 0,
+    "disk_save_fail": 0
+   },
+   "crashes": 0
+  },
+  "weird": {
+   "turns": 36,
+   "intent_counts": {
+    "'onboarding'": 8,
+    "'smalltalk'": 8,
+    "'dsa'": 5,
+    "'communication'": 11,
+    "'progress'": 1,
+    "'core_subject'": 3
+   },
+   "markers": {
+    "clarify_fail": 8,
+    "greet_fail*": 0,
+    "farewell_fail*": 0,
+    "dsa_evaluator_fail": 1,
+    "dsa_selector_fail": 0,
+    "core_examiner_fail": 0,
+    "comm_interviewer_fail*": 0,
+    "comm_all_judge_fail": 0,
+    "comm_wrap_fail": 1,
+    "progress_fail": 0,
+    "disk_save_fail": 0
+   },
+   "crashes": 0
+  },
+  "normal": {
+   "turns": 37,
+   "intent_counts": {
+    "'onboarding'": 6,
+    "'dsa'": 4,
+    "'smalltalk'": 8,
+    "'communication'": 17,
+    "'progress'": 1,
+    "'exit'": 1
+   },
+   "markers": {
+    "clarify_fail": 8,
+    "greet_fail*": 0,
+    "farewell_fail*": 0,
+    "dsa_evaluator_fail": 2,
+    "dsa_selector_fail": 0,
+    "core_examiner_fail": 0,
+    "comm_interviewer_fail*": 0,
+    "comm_all_judge_fail": 0,
+    "comm_wrap_fail": 0,
+    "progress_fail": 0,
+    "disk_save_fail": 0
+   },
+   "crashes": 0
+  }
+ },
+ "data": {
+  "rude": {
+   "unscored_judge_error": 0,
+   "dsa_couldnt_score_attempts": 0,
+   "records": [
+    "2026-09-17-dsa-1.json"
+   ],
+   "attempts": []
+  },
+  "chaotic": {
+   "unscored_judge_error": 0,
+   "dsa_couldnt_score_attempts": 0,
+   "records": [
+    "2026-09-17-core_subject-1.json",
+    "2026-09-17-dsa-1.json"
+   ],
+   "attempts": []
+  },
+  "weird": {
+   "unscored_judge_error": 0,
+   "dsa_couldnt_score_attempts": 0,
+   "records": [
+    "2026-09-17-communication-1.json",
+    "2026-09-17-dsa-1.json"
+   ],
+   "attempts": []
+  },
+  "normal": {
+   "unscored_judge_error": 0,
+   "dsa_couldnt_score_attempts": 0,
+   "records": [
+    "2026-09-17-communication-1.json",
+    "2026-09-17-dsa-1.json"
+   ],
+   "attempts": []
+  }
+ },
+ "reconcile": {
+  "E": 141,
+  "P_plain_fails": 35,
+  "plain_total": 42,
+  "clarify_invocations": 35,
+  "S_known": 4,
+  "R_range": [
+   0,
+   6
+  ],
+  "S_total_range": [
+   50,
+   53
+  ],
+  "fallback_llm_failures_range": [
+   85,
+   88
+  ]
+ }
+}
