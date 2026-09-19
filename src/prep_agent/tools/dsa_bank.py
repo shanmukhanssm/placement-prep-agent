@@ -58,12 +58,17 @@ def _load_bank() -> tuple[dict[str, Any], ...]:
     """Load + fully validate the bank once; corruption is a code bug, not a runtime
     condition — fail loudly at the first call (tests pin the file)."""
     raw = json.loads(BANK_PATH.read_text(encoding="utf-8"))
-    if not isinstance(raw, list) or len(raw) != 100:
-        raise RuntimeError(f"dsa_bank.json must hold exactly 100 entries, got {len(raw) if isinstance(raw, list) else type(raw)}")
+    count = len(raw) if isinstance(raw, list) else -1
+    if count != 100:
+        raise RuntimeError(f"dsa_bank.json must hold exactly 100 entries, got {count}")
     entries: list[dict[str, Any]] = []
     seen: set[int] = set()
     for item in raw:
-        missing = [key for key in REQUIRED_KEYS if not str(item.get(key, "")).strip() and key != "id"]
+        missing = [
+            key
+            for key in REQUIRED_KEYS
+            if key != "id" and not str(item.get(key, "")).strip()
+        ]
         if missing:
             raise RuntimeError(f"bank entry missing keys {missing}: {item.get('id')}")
         qid = int(item["id"])

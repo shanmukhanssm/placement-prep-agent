@@ -155,7 +155,7 @@ def test_oldest_partial_rotates_in_first() -> None:
 
 
 def test_all_solved_ends_honestly() -> None:
-    history = [_record(f"2026-09-10", qid, "pass", 85.0) for qid in range(1, 101)]
+    history = [_record("2026-09-10", qid, "pass", 85.0) for qid in range(1, 101)]
     assert _select_question(weak_areas=[], history=history) is None
 
 

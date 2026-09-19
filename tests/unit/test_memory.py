@@ -14,6 +14,7 @@ import pytest
 from prep_agent.nodes.load_context import load_context
 from prep_agent.nodes.remember import MemoryFact, MemoryTurn, remember
 from prep_agent.state import MainState, TrendVerdict
+from prep_agent.tools.errors import ToolError
 from prep_agent.tools.memory import (
     MAX_ENTRIES,
     MemoryFactArgs,
@@ -25,7 +26,6 @@ from prep_agent.tools.memory import (
     write_basics,
     write_memory,
 )
-from prep_agent.tools.errors import ToolError
 
 pytestmark = [pytest.mark.unit]
 

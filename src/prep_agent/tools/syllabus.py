@@ -43,7 +43,6 @@ _CYBER_ALIASES: frozenset[str] = frozenset(
     {
         "cyber",
         "cybersecurity",
-        "cybersecurity",
         "cybersec",
         "informationsecurity",
         "infosec",

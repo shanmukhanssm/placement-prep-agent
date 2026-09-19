@@ -115,8 +115,10 @@ def test_profile_accepts_free_text_core_subject(profile_dict) -> None:
 
 
 def test_profile_rejects_empty_core_subject(profile_dict) -> None:
+    from pydantic import ValidationError
+
     profile_dict["core_subject"] = ""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         Profile.model_validate(profile_dict)
 
 

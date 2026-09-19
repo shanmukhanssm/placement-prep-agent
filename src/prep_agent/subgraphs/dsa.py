@@ -335,24 +335,36 @@ def _select_question(weak_areas: list[str], history: list[dict[str, Any]]) -> Se
 
     def _topic_rank(topic: str) -> tuple[int, int, str]:
         # least-covered first: "you've covered this topic, so a different topic now"
-        return (coverage.get(topic, 0), served_topics.index(topic) if topic in served_topics else 10_000, topic)
+        served_idx = served_topics.index(topic) if topic in served_topics else 10_000
+        return (coverage.get(topic, 0), served_idx, topic)
 
     ranked = sorted(set(pool), key=_topic_rank)
 
-    # 3) difficulty frontier: lowest unsolved id in the chosen tier, then in any tier
-    for candidates in (
-        lambda topic: [e for e in unsolved if e["topic"] == topic and e["difficulty"] == tier],
-        lambda topic: [e for e in unsolved if e["topic"] == topic],
-    ):
+    # 3) difficulty frontier: lowest unsolved id in the chosen tier, then any tier
+    def _candidates_in_tier(topic: str) -> list[dict[str, Any]]:
+        return [e for e in unsolved if e["topic"] == topic and e["difficulty"] == tier]
+
+    def _candidates_any_tier(topic: str) -> list[dict[str, Any]]:
+        return [e for e in unsolved if e["topic"] == topic]
+
+    for candidates in (_candidates_in_tier, _candidates_any_tier):
         for topic in ranked:
             hits = sorted(candidates(topic), key=lambda e: e["id"])
             if hits:
-                return Selection(entry=hits[0], reason=_compose_reason(base_reason, topic, weak_areas))
+                entry = hits[0]
+                return Selection(
+                    entry=entry,
+                    reason=_compose_reason(base_reason, topic, weak_areas),
+                )
 
     # 4) last resort: any unsolved question, least-covered topic, lowest id first
     fallback = sorted(unsolved, key=lambda e: (coverage.get(e["topic"], 0), e["id"]))
     if fallback:
-        return Selection(entry=fallback[0], reason=_compose_reason(base_reason, fallback[0]["topic"], weak_areas))
+        entry = fallback[0]
+        return Selection(
+            entry=entry,
+            reason=_compose_reason(base_reason, entry["topic"], weak_areas),
+        )
     return None
 
 

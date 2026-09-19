@@ -55,7 +55,10 @@ _ASK_EXAMPLES: dict[str, str] = {
     "grad_year": "Which year do you graduate? e.g. 2027",
     "target_roles": "What roles are you aiming for? e.g. SDE, data analyst",
     "weak_areas": "Which areas feel weakest right now? e.g. arrays, OS, speaking nervously",
-    "core_subject": "What are you preparing for — what's your core subject? e.g. AIML, cybersecurity, DBMS, operating systems",
+    "core_subject": (
+        "What are you preparing for — what's your core subject? "
+        "e.g. AIML, cybersecurity, DBMS, operating systems"
+    ),
 }
 
 
@@ -104,7 +107,7 @@ def _build_profile(collected: dict[str, str]) -> Profile:
         grad_year=int(collected["grad_year"]),
         target_roles=[p.strip() for p in collected["target_roles"].split(",")],
         weak_areas=[p.strip() for p in collected["weak_areas"].split(",")],
-        core_subject=collected["core_subject"],  # validated by _normalize (free text since Change-1)
+        core_subject=collected["core_subject"],  # _normalize-validated, free text (C1)
     )
 
 

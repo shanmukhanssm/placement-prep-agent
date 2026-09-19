@@ -50,7 +50,11 @@ BASICS_ORDER: tuple[str, ...] = (
 # instruction-guard: a memory value is STUDENT FACTS, never directives — reject
 # prompt-injection payloads so a stored line can never hijack future turns
 _GUARD_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"ignore (?:all |any |my )?(?:previous|prior|above|earlier) (?:instructions|prompts?|messages?)", re.I),
+    re.compile(
+        r"ignore (?:all |any |my )?(?:previous|prior|above|earlier)"
+        r" (?:instructions|prompts?|messages?)",
+        re.I,
+    ),
     re.compile(r"disregard (?:all |your |any )?(?:previous|prior|instructions|rules)", re.I),
     re.compile(r"system prompt", re.I),
     re.compile(r"^you are (?:now |an |a )", re.I),
