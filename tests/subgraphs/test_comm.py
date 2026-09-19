@@ -184,6 +184,36 @@ def test_comm_short_answer_probes_then_scores_composite(llm_queues, seeded_card)
 
 
 @pytest.mark.unit
+def test_comm_real_short_answers_judged_not_probed(llm_queues, seeded_card):
+    """Live fix: 3+ word answers are REAL answers — they reach the judge instead of
+    the canned 'Take your time' stall. The mechanical probe is for no-answer input
+    (≤2 words / empty) only; a thin-but-honest answer gets scored, not stalled."""
+    state = _invoke(CommState(), "start the round")  # Q1
+    llm_queues["comm_judge"] = [_score(5)]
+    llm_queues["comm_interviewer"] = [_question(2)]
+    judged = _invoke(state, "i never worked with a team")  # 6 words — thin but real
+    assert judged.phase == "ask" and len(judged.q_and_a) == 1
+    assert judged.q_and_a[0].score == 5.0
+    assert judged.q_and_a[0].question == state.current_question  # judged, not re-asked
+    assert judged.probes_on_current == 0 and judged.answer_buffer == ""
+
+
+@pytest.mark.unit
+def test_comm_probe_line_matches_input_kind(llm_queues, seeded_card):
+    """1–2-word answers get the escalating specificity probe; empty/whitespace input
+    gets the gentle 'Take your time' hold."""
+    llm_queues["comm_interviewer"] = [_question(1), _question(1)]
+    state = _invoke(CommState(), "start the round")  # Q1
+    probed = _invoke(state, "teamwork")  # 1 word → specificity probe, not a stall
+    assert probed.phase == "probe" and probed.probes_on_current == 1
+    assert probed.assistant_message.startswith("Tell me a bit more")
+    fresh = _invoke(CommState(), "start the round")  # fresh Q1
+    held = _invoke(fresh, "   ")  # whitespace-only → the gentle no-answer hold
+    assert held.phase == "probe" and held.probes_on_current == 1
+    assert held.assistant_message.startswith("Take your time")
+
+
+@pytest.mark.unit
 def test_comm_run_thin_closes_early_with_reverse_question(llm_queues, seeded_card):
     llm_queues["comm_judge"] = [_score(1)] * 9  # all thin (≤3)
     llm_queues["comm_interviewer"] = [_question(n) for n in range(1, 10)]
@@ -289,7 +319,7 @@ def test_h8_skip_after_probe_resets_buffer_and_probe_budget(llm_queues, seeded_c
         # the score for the post-skip question: judged on ITS answer alone, nothing leaked
         _score(9),
     ]
-    probed = _invoke(state, "short answer")  # ≤10 words → probe
+    probed = _invoke(state, "short answer")  # 2 words → specificity probe
     assert probed.phase == "probe" and probed.answer_buffer == "short answer"
     assert probed.probes_on_current == 1
     skipped = _invoke(probed, "skip")  # skip the probed question
@@ -297,6 +327,6 @@ def test_h8_skip_after_probe_resets_buffer_and_probe_budget(llm_queues, seeded_c
     assert skipped.answer_buffer == "" and skipped.probes_on_current == 0  # H8 resets
     judged = _invoke(
         skipped, "a completely fresh full answer for question two with many more words"
-    )  # >10 words — must be JUDGED (score 9), not probed again on leaked budget
+    )  # >2 words — must be JUDGED (score 9), not probed again on leaked budget
     assert judged.q_and_a[-1].score == 9.0
     assert judged.probes_on_current == 0

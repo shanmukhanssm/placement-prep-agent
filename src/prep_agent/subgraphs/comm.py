@@ -4,7 +4,8 @@ COMM_INTERVIEWER_V1 (temp 0.8) asks exactly one non-subject question per turn on
 behavior-comm.md arc (intro → behavioral → situational → strengths/weaknesses →
 curveball → closing); COMM_JUDGE_V1 (temp 0.2) scores every answer 0-10 with
 structure/clarity/relevance/confidence sub-scores. Flow control per behavior-comm §5
-(code-owned, mechanical): one-word/empty probes (≤2 per question), explicit skips
+(code-owned, mechanical): one-word/empty probes (≤2 per question — 3+ word answers
+are always judged), explicit skips
 (≤2 honored — further requests keep the question pending; honored skips score 0.0
 and count in the mean), quit (honor immediately — ≥5 answered saves, else no
 record), run-thin early close at ≥8, hard stop at 10. Judge failure after the
@@ -57,8 +58,10 @@ _QUIT_PHRASES: frozenset[str] = frozenset(
         "end the interview",
     }
 )
-_PROBES: tuple[str, ...] = (
-    "Take your time — type as much or as little as you like.",
+# No-answer input gets the gentle hold; 1–2-word answers get escalating specificity
+# (behavior-comm §5). Real answers (3+ words) are NEVER probed — they are judged.
+_EMPTY_PROBE = "Take your time — type as much or as little as you like."
+_THIN_PROBES: tuple[str, ...] = (
     "Tell me a bit more — what was YOUR role? One specific moment is fine.",
     "One specific example, please — a person, a project, or a day.",
 )
@@ -231,11 +234,17 @@ def comm_judge(state: CommState) -> dict[str, Any]:
     if not answer:
         answer = message
     words = len(message.split())
-    # probes never fire after the closing question or before any question exists (§5)
+    # probes never fire after the closing question or before any question exists (§5).
+    # ≤2-word/empty input is treated as no answer; 3+ words is a real answer and is
+    # always judged — a thin-but-honest answer gets scored, not stalled (live fix).
     probeable = bool(state.current_question) and not state.closing_asked
     budget_left = state.probes_on_current < COMM_MAX_PROBES_PER_QUESTION
     if probeable and budget_left and words <= COMM_WORD_PROBE_THRESHOLD:
-        probe = _PROBES[min(state.probes_on_current, len(_PROBES) - 1)]
+        probe = (
+            _EMPTY_PROBE
+            if words == 0
+            else _THIN_PROBES[min(state.probes_on_current, len(_THIN_PROBES) - 1)]
+        )
         return {
             "phase": "probe",
             "answer_buffer": answer,

@@ -80,7 +80,8 @@ DSA_META_BUDGET: Final[int] = 2  # non-attempt exchanges before the evaluator of
 SESSION_MIN_QUESTIONS: Final[int] = 8  # interviewer/examiner may stop at >=8 when answers run thin
 SESSION_MAX_QUESTIONS: Final[int] = 10  # hard stop — never more than 10 questions
 ONBOARDING_FIELD_COUNT: Final[int] = 6
-COMM_WORD_PROBE_THRESHOLD: Final[int] = 10  # <= this many words triggers the one-word probe
+# ≤ this many words = no-answer input → probe; 3+ word answers always reach the judge
+COMM_WORD_PROBE_THRESHOLD: Final[int] = 2
 COMM_MAX_PROBES_PER_QUESTION: Final[int] = 2  # one-word answers: probe up to 2 times
 COMM_MAX_SKIPS: Final[int] = 2  # explicit skips honored per session (behavior-comm §5)
 QUIT_SAVE_MIN_ANSWERED: Final[int] = 5  # quit saves a record only at >= 5 answered/asked
