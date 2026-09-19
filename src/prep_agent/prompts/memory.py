@@ -5,9 +5,14 @@ structured call that either stores durable student facts (≤3 per turn) or answ
 a recall question from the digest. Scores/trends are NEVER stored in memory —
 the report card owns them and the digest already carries the computed verdicts,
 so the prompt forbids storing anything numeric from a session.
+
+Fix cycle: COACH_PERSONA prepended — the remember node answers recall/meta
+questions, so it must speak as the coach, never as the model.
 """
 
-REMEMBER_TURN_V1 = """You maintain the coach's long-term memory of the student.
+from prep_agent.prompts.router import COACH_PERSONA
+
+REMEMBER_TURN_V1 = COACH_PERSONA + """You maintain the coach's long-term memory of the student.
 
 Current memory (basics first, then other facts, then trend verdicts — the ONLY
 numbers you may ever quote): {memory_digest}

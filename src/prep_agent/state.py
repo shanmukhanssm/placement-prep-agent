@@ -63,10 +63,21 @@ class IntentClassification(BaseModel):
     ``intent="smalltalk"`` INSIDE route_turn so the conditional edge stays a
     pure string match (graph-design.md edge table). The LLM never emits
     "smalltalk" directly for low-confidence — the code does the normalization.
+
+    Fix cycle: ``discussion`` added — bounded answers to open/opinion questions
+    that used to bounce into the clarify loop or misroute into a core viva.
     """
 
     intent: Literal[
-        "dsa", "communication", "core_subject", "progress", "greet", "memory", "smalltalk", "exit"
+        "dsa",
+        "communication",
+        "core_subject",
+        "progress",
+        "greet",
+        "memory",
+        "discussion",
+        "smalltalk",
+        "exit",
     ]
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -86,5 +97,9 @@ class MainState(BaseModel):
     # routing
     session_active: Literal["", "dsa", "communication", "core_subject"] = ""  # overwrite
     intent: str = ""  # overwrite
+    # Fix (clarify cap): consecutive clarify turns — load_context computes it from
+    # LAST turn's intent (route_turn has not run yet); clarify consumes it to
+    # escalate to an honest answer instead of a third re-ask.
+    clarify_streak: int = 0  # overwrite
     # specialist working state (opaque dict at parent level; typed inside subgraphs)
     session_data: dict[str, Any] = Field(default_factory=dict)  # overwrite — one writer per turn

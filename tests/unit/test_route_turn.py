@@ -59,6 +59,15 @@ def test_classify_routes_to_core_subject(llm_queues) -> None:
     assert route_turn(_state("quiz me on aiml theory"))["intent"] == "core_subject"
 
 
+def test_classify_routes_to_discussion(llm_queues) -> None:
+    # Fix cycle: open/opinion questions get their own intent instead of
+    # misrouting into a core viva or the clarify loop
+    llm_queues["router_classify"] = [{"intent": "discussion", "confidence": 0.8}]
+    assert route_turn(
+        _state("what do you think about the no-jobs-by-2030 prediction")
+    )["intent"] == "discussion"
+
+
 def test_classify_routes_to_progress(llm_queues) -> None:
     llm_queues["router_classify"] = [{"intent": "progress", "confidence": 0.88}]
     assert route_turn(_state("how am I doing"))["intent"] == "progress"

@@ -1,16 +1,19 @@
-"""greet_returning / progress_talk / clarify / farewell. REAL (Phase 3.1).
+"""greet_returning / progress_talk / clarify / discussion / farewell. REAL.
 
-All four nodes consume ``trend_summary`` (deterministic, precomputed by
+All conversation nodes consume ``trend_summary`` (deterministic, precomputed by
 ``load_context`` via ``compute_trend``) and narrate ONLY those numbers — the
 number-integrity rule (prompt-registry.md). Each node tries ONE plain-text LLM
 call; on any failure it falls back to a templated message built from the SAME
 numbers in code, so an LLM outage never crashes a turn and never invents a
 number.
 
-Topological note: ``greet_returning`` is currently unreachable from the routing
-table (graph-design.md has no "greet" intent — see progress-tracker). It is
-implemented per spec and unit-tested directly; wiring it into the routing is a
-future-owner decision recorded in progress-tracker.
+Fix cycle: ``discussion`` added — the bounded honest-answer handler for open /
+opinion questions ("what do you think about X"), which previously bounced into
+the clarify loop or misrouted into a core viva. ``clarify`` now escalates: at
+``clarify_streak >= 2`` (computed by load_context from last turn's intent) it
+swaps to CLARIFY_ESCALATE_V1 and answers honestly instead of asking a third
+time. DISCUSSION_V1 injects no trend numbers, so number-integrity holds
+trivially there.
 """
 
 import json
@@ -19,11 +22,12 @@ from typing import Any
 
 from prep_agent.config import message_text
 from prep_agent.prompts.greetings import (
+    DISCUSSION_V1,
     FAREWELL_V1,
     GREET_RETURNING_V1,
     PROGRESS_TALK_V1,
 )
-from prep_agent.prompts.router import CLARIFY_V1
+from prep_agent.prompts.router import CLARIFY_ESCALATE_V1, CLARIFY_V1
 from prep_agent.state import MainState, TrendVerdict
 
 logger = logging.getLogger("greetings")
@@ -124,20 +128,42 @@ def progress_talk(state: MainState) -> dict[str, Any]:
 
 
 def clarify(state: MainState) -> dict[str, Any]:
-    """One short clarifying question when intent is ambiguous; never routes silently."""
-    # the best-guess intent + confidence ride in state.intent (normalized to "smalltalk"
-    # by route_turn for low-confidence — but the original label is gone by design).
-    # For the LLM, we surface the normalized intent; the prompt handles it gracefully.
+    """One short clarifying question when intent is ambiguous; never routes silently.
+
+    Fix (clarify cap): at ``clarify_streak >= 2`` the prompt flips to
+    CLARIFY_ESCALATE_V1 — an honest answer to what the user actually asked,
+    instead of a third re-ask (the live loop: two clarifies, then a misroute).
+    """
+    if state.clarify_streak >= 2:
+        prompt = CLARIFY_ESCALATE_V1.format(user_message=state.user_message)
+    else:
+        prompt = CLARIFY_V1.format(
+            user_message=state.user_message,
+            intent=state.intent or "smalltalk",
+            confidence=0.5,  # conservative — the LLM never sees the original confidence
+        )
     fallback = (
         "Just so I point you right — did you want to practice DSA, communication, "
         "or your core subject, or see your progress?"
     )
-    prompt = CLARIFY_V1.format(
-        user_message=state.user_message,
-        intent=state.intent or "smalltalk",
-        confidence=0.5,  # conservative — the LLM never sees the original confidence
-    )
     return {"assistant_message": _llm_narrate("clarify", prompt, fallback)}
+
+
+def discussion(state: MainState) -> dict[str, Any]:
+    """Bounded honest answer to an open/opinion question (Fix: discussion intent).
+
+    The escape hatch for "what do you think about X": one plain-text LLM call,
+    ≤3 sentences of real take + one track pointer. NO trend numbers are
+    injected, so number-integrity holds trivially. The fallback is honest about
+    the outage rather than bluffing an opinion.
+    """
+    prompt = DISCUSSION_V1.format(user_message=state.user_message)
+    fallback = (
+        "My free-form answer layer is down this turn and I won't bluff a take — "
+        "ask me again in a minute. Meanwhile: DSA problems, communication practice, "
+        "your core subject, or a progress check?"
+    )
+    return {"assistant_message": _llm_narrate("discussion", prompt, fallback)}
 
 
 def farewell(state: MainState) -> dict[str, Any]:

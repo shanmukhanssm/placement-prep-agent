@@ -40,4 +40,8 @@ def load_context(state: MainState) -> dict[str, Any]:
         # every node narrating memory quotes THIS string, never fresh arithmetic
         "memory_digest": compose_digest(memory.entries if memory.exists else {}, trends),
         "turn_count": state.turn_count + 1,
+        # Fix (clarify cap): state.intent still holds LAST turn's intent here —
+        # route_turn has not run yet. clarify consumes this to flip to the
+        # escalate prompt instead of asking a third time (the live clarify loop).
+        "clarify_streak": state.clarify_streak + 1 if state.intent == "smalltalk" else 0,
     }

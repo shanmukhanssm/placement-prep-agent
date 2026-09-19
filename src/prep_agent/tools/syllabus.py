@@ -63,10 +63,16 @@ _GENERIC_TOPICS: tuple[tuple[str, str], ...] = (
 
 
 class SyllabusTopic(BaseModel):
-    """One examinable topic: canonical name + the depth ceiling for questions."""
+    """One examinable topic: canonical name + the depth ceiling for questions.
+
+    Fix (live-session finding): ``blurb`` defaults to "" so a model slip that
+    omits it (the logged ``topics.5.blurb — Field required`` qwen failure) no
+    longer fails the WHOLE structured call; ensure_syllabus fills the blank
+    deterministically before use/cache, keeping strict content everywhere else.
+    """
 
     name: str
-    blurb: str
+    blurb: str = ""
 
 
 class GeneratedSyllabus(BaseModel):
@@ -170,7 +176,12 @@ def ensure_syllabus(subject: str) -> tuple[tuple[str, str], ...]:
     topics: list[tuple[str, str]] = []
     if turn is not None:
         for t in turn.topics:
-            name, blurb = t.name.strip(), t.blurb.strip()
+            name = t.name.strip()
+            # Fix: a missing blurb is FILLED, not fatal — the entry stays servable
+            # and the cache keeps a full name+blurb shape (_load_cached requires both).
+            blurb = t.blurb.strip() or (
+                f"{name}: core ideas, standard interview questions, and how to apply them."
+            )
             if name and blurb:
                 topics.append((name, blurb))
     source = "llm"

@@ -105,6 +105,19 @@ def test_ensure_syllabus_falls_back_on_thin_llm_output(syllabus_dir, llm_queues)
     )
 
 
+def test_ensure_syllabus_fills_missing_blurb_instead_of_failing(syllabus_dir, llm_queues) -> None:
+    # Fix (live qwen slip): topics.N.blurb missing must NOT fail the whole call —
+    # the schema tolerates it and ensure_syllabus fills the blank deterministically
+    llm_queues["core_syllabus"] = [
+        {"topics": [{"name": f"topic {i}"} for i in range(1, 8)]}  # no blurb keys at all
+    ]
+    topics = ensure_syllabus("software engineering")
+    assert len(topics) == 7
+    assert all(name and blurb for name, blurb in topics)
+    payload = json.loads((syllabus_dir / "software-engineering.json").read_text())
+    assert payload["source"] == "llm"  # the real topics survived — not the fallback
+
+
 # --- free-text subjects flow through the Profile (state change pin) ---
 
 
