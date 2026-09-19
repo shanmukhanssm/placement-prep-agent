@@ -166,12 +166,17 @@ def test_normalize_core_subject_accepts_natural_answers() -> None:
     assert norm("core_subject", "cybersecurity") == "cyber"
     assert norm("core_subject", "Cyber-Security") == "cyber"
     assert norm("core_subject", "Cyber") == "cyber"
-    # bare "ai" / "ml" are ambiguous alone — still dropped and re-asked
-    assert norm("core_subject", "ai") is None
-    assert norm("core_subject", "ML") is None
-    # garbage still None
-    assert norm("core_subject", "physics") is None
+    # Change-1: bare "ai"/"ml" now resolve to the curated aiml syllabus (open question)
+    assert norm("core_subject", "ai") == "aiml"
+    assert norm("core_subject", "ML") == "aiml"
+    # Change-1: any free-text subject is accepted verbatim (whitespace-collapsed)
+    assert norm("core_subject", "physics") == "physics"
+    assert norm("core_subject", "DBMS") == "DBMS"
+    assert norm("core_subject", "operating   systems") == "operating systems"
+    # degenerate answers still None
     assert norm("core_subject", "   ") is None
+    assert norm("core_subject", "x") is None  # < 2 chars
+    assert norm("core_subject", "a" * 61) is None  # > 60 chars
 
 
 # --- B-7b: the completing turn shows the welcome template, never a stale re-ask ---

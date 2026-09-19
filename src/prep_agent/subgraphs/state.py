@@ -97,7 +97,7 @@ class CoreState(CommState):
     """core_session sub-state — comm loop shape plus syllabus/probe/viva bookkeeping."""
 
     topic: str = ""  # canonical topic of the CURRENT question (rotation key)
-    core_subject: Literal["aiml", "cyber", ""] = ""  # injected by the wrapper from the profile
+    core_subject: str = ""  # free text since Change-1; curated aiml/cyber resolve via tools/syllabus
     weak_areas: list[str] = Field(default_factory=list)  # injected; drives topic rotation
     topics_asked: list[str] = Field(default_factory=list)  # canonical topic per judged answer
     expected_points: list[list[str]] = Field(default_factory=list)  # per judged answer

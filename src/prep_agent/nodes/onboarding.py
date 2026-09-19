@@ -34,6 +34,7 @@ from prep_agent.tools.report_card import (
     init_report_card,
     write_profile,
 )
+from prep_agent.tools.syllabus import canonical_subject, subject_label
 
 logger = logging.getLogger("onboarding")
 
@@ -53,7 +54,7 @@ _ASK_EXAMPLES: dict[str, str] = {
     "grad_year": "Which year do you graduate? e.g. 2027",
     "target_roles": "What roles are you aiming for? e.g. SDE, data analyst",
     "weak_areas": "Which areas feel weakest right now? e.g. arrays, OS, speaking nervously",
-    "core_subject": "Pick your core subject for theory practice — aiml or cyber?",
+    "core_subject": "What are you preparing for — what's your core subject? e.g. AIML, cybersecurity, DBMS, operating systems",
 }
 
 
@@ -81,12 +82,17 @@ def _normalize(field: str, raw: str) -> str | None:
         parts = [p.strip() for p in value.split(",") if p.strip()]
         return ", ".join(parts) or None
     if field == "core_subject":
-        # B-7a: natural answers ("AI/ML", "AI ML", "cyber security") normalize instead of
-        # being dropped and re-asked. Squash punctuation/spacing, then map to the canonical
-        # Profile token (aiml|cyber). Bare "ai" or "ml" alone stays None (ambiguous), as
-        # does anything unrecognized — validation stays conservative, only spelling widened.
-        squashed = re.sub(r"[^a-z0-9]+", "", value.lower())
-        return {"aiml": "aiml", "cybersecurity": "cyber", "cyber": "cyber"}.get(squashed)
+        # Change-1: FREE TEXT — any subject the student names is accepted (2-60 chars,
+        # whitespace-collapsed). Known alias spellings still resolve to the two curated
+        # syllabus tokens (aiml|cyber) so their viva stays curated; everything else is
+        # stored verbatim (tools/syllabus generates + caches its syllabus later).
+        cleaned = re.sub(r"\s+", " ", value).strip()
+        if len(cleaned) < 2 or len(cleaned) > 60:
+            return None
+        canonical = canonical_subject(cleaned)
+        if canonical in ("aiml", "cyber"):
+            return canonical
+        return cleaned
     return value  # name, degree_branch — free text
 
 
@@ -97,7 +103,7 @@ def _build_profile(collected: dict[str, str]) -> Profile:
         grad_year=int(collected["grad_year"]),
         target_roles=[p.strip() for p in collected["target_roles"].split(",")],
         weak_areas=[p.strip() for p in collected["weak_areas"].split(",")],
-        core_subject=collected["core_subject"],  # validated by _normalize (aiml|cyber only)
+        core_subject=collected["core_subject"],  # validated by _normalize (free text since Change-1)
     )
 
 
@@ -195,8 +201,21 @@ def _harvest(field: str, message: str) -> str | None:
         m = re.search(r"\b(20[2-3]\d)\b", text)
         return _normalize(field, m.group(1)) if m else None
     if field == "core_subject":
+        # Leading negation first — "not cyber" must never harvest anything (a wrong
+        # subject is permanent). Family mentions keep the per-mention negation window;
+        # a message naming BOTH families stays None (conflicting → re-ask). Anything
+        # else short is a valid free-text subject (Change-1).
+        if re.match(
+            r"^(not|no|never|don'?t|can'?t|doesn'?t|didn'?t|except|instead|rather|other than)\b",
+            low,
+        ):
+            return None
         picks: set[str] = set()
-        for m in re.finditer(r"\b(ai\s*/?\s*ml|aiml|cyber\s*security|cyber)\b", low):
+        for m in re.finditer(
+            r"\b(ai|ml|aiml|machine\s*learning|artificial\s*intelligence"
+            r"|cyber\s*(?:security|sec)?|infosec|information\s*security)\b",
+            low,
+        ):
             prefix = low[max(0, m.start() - 14) : m.start()]
             if re.search(
                 r"\b(not|no|never|don'?t|can'?t|doesn'?t|didn'?t|except|instead"
@@ -204,8 +223,14 @@ def _harvest(field: str, message: str) -> str | None:
                 prefix,
             ):
                 continue  # negated mention — "not cyber" must not harvest "cyber"
-            picks.add("cyber" if "cyber" in m.group(0) else "aiml")
-        return picks.pop() if len(picks) == 1 else None  # conflicting mentions → re-ask
+            picks.add(
+                "cyber"
+                if m.group(0).startswith(("cyber", "infosec", "information"))
+                else "aiml"
+            )
+        if picks:
+            return picks.pop() if len(picks) == 1 else None  # conflicting mentions → re-ask
+        return _normalize(field, text)  # free-text subject, e.g. "DBMS"
     if field == "name":
         m = re.search(r"\b(?:my name is|i am|i'm|im|this is|call me)\s+([a-z][a-z .'-]{1,30})", low)
         if m:
@@ -339,6 +364,6 @@ def onboarding(state: MainState) -> dict[str, Any]:
             grad_year=profile.grad_year,
             roles=", ".join(profile.target_roles),
             weak=", ".join(profile.weak_areas),
-            subject=profile.core_subject.upper(),
+            subject=subject_label(profile.core_subject),
         ),
     }

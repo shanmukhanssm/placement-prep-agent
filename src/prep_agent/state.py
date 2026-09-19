@@ -11,14 +11,19 @@ from pydantic import BaseModel, Field
 
 
 class Profile(BaseModel):
-    """The 6 onboarding fields; core_subject chosen once, fixed afterwards."""
+    """The 6 onboarding fields; core_subject chosen once, fixed afterwards.
+
+    Change-1: core_subject is FREE TEXT (any subject the student is preparing for).
+    The two curated syllabi (aiml/cyber) resolve via tools/syllabus.canonical_subject;
+    any other value gets a generated, cached syllabus. Non-empty, capped length.
+    """
 
     name: str
     degree_branch: str  # e.g. "B.Tech CSE"
     grad_year: int
     target_roles: list[str]
     weak_areas: list[str]  # self-declared at onboarding
-    core_subject: Literal["aiml", "cyber"]
+    core_subject: str = Field(min_length=1, max_length=60)  # free text since Change-1
 
 
 class QuestionRecord(BaseModel):

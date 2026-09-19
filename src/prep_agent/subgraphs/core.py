@@ -41,6 +41,7 @@ from prep_agent.state import MainState, QuestionRecord
 from prep_agent.subgraphs.state import CoreAnswerScore, CoreState, QuizQuestion
 from prep_agent.tools.errors import ToolError
 from prep_agent.tools.report_card import SaveSessionArgs, read_report_card, save_session_results
+from prep_agent.tools.syllabus import canonical_subject, ensure_syllabus, subject_label
 
 logger = logging.getLogger("core_session")
 
@@ -69,9 +70,15 @@ def _f(value: object) -> float:
 
 
 def _syllabus(state: CoreState, track: str) -> tuple[tuple[str, str], ...]:
+    """Curated syllabi for the two canonical tokens; generated+cached for free text."""
     if track == "dsa_theory":
         return DSA_THEORY_SYLLABUS
-    return AIML_SYLLABUS if state.core_subject == "aiml" else CYBER_SYLLABUS
+    canonical = canonical_subject(state.core_subject)
+    if canonical == "aiml":
+        return AIML_SYLLABUS
+    if canonical == "cyber":
+        return CYBER_SYLLABUS
+    return ensure_syllabus(state.core_subject)
 
 
 def _maps_weak(topic: str, weak_areas: list[str]) -> bool:
@@ -146,11 +153,11 @@ def examiner(state: CoreState) -> dict[str, Any]:
     track = "dsa_theory" if question_no in dsa_theory_positions(SESSION_MAX_QUESTIONS) else "core"
     topic = _pick_topic(state, track)
     ceiling = dict(_syllabus(state, track))[topic]
-    subject_label = "AIML" if state.core_subject == "aiml" else "cybersecurity"
+    subject_label_text = subject_label(state.core_subject)
     if state.question_count == 0:
         turn_directive = (
             "This is the OPENING turn: first the contract line — 'Good day. This is your "
-            f"core-subject viva: {subject_label}, with some DSA theory mixed in. There will "
+            f"core-subject viva: {subject_label_text}, with some DSA theory mixed in. There will "
             "be 8 to 10 questions, one at a time — answer each in your own words, in "
             "complete sentences.' — then ask Question 1 directly after it."
         )

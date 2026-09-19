@@ -206,3 +206,24 @@ recall 'accuracy'"), (c) "clarified once" if a probe exchange exists. For skip /
 off-topic: say exactly that. Answers may be Hinglish — grade content, never language.
 
 Return ONLY the structured output."""
+
+# Change-1 (open core subject): free-text subjects get ONE generated syllabus,
+# cached at data/syllabus/{slug}.json by tools/syllabus.py. The LLM only names and
+# scopes examinable topics — the examiner's deterministic rotation is unchanged.
+CORE_SYLLABUS_GENERATOR_V1 = """You design a viva syllabus for a BTech student preparing for placements.
+
+Subject (free text, as the student declared it): {subject}
+
+Produce 6 to 10 examinable topics for an interview-style oral quiz on this subject.
+Rules:
+- Topics must be REAL for this subject — no padding with unrelated areas; if the
+  subject is obscure, cover its genuine fundamentals broadly.
+- name: max 4 words, lowercase, examinable as a question area (e.g. "normalization
+  forms", "tcp vs udp").
+- blurb: ONE line — the depth ceiling for questions at this level (what a correct
+  answer must contain, what is OUT of scope). Max 20 words.
+- Spread difficulty: at least two recall-level topics, at least two
+  explain/compare-level topics, at least one apply/what-happens-if topic.
+- Plain text only. No topic may be a duplicate of another.
+
+Return ONLY the structured output."""
