@@ -106,16 +106,16 @@ Return ONLY the structured output.
 
 ---
 
-## `greet_returning` — v2
+## `greet_returning` — v3
 
 | Property | Value |
 | --- | --- |
 | Node | `greet_returning` |
-| Prompt text | `src/prep_agent/prompts/greetings.py::GREET_RETURNING_V1` |
+| Prompt text | `src/prep_agent/prompts/greetings.py::GREET_RETURNING_V1` + `GREET_IDENTITY_V1` (identity asks, selected by the node's narrow `_IDENTITY_RE`) |
 | Model / temp / max tokens | placeholder / 0.6 / 250 |
 | Structured output | none (plain message) |
-| Consumed state | `trend_summary` (precomputed verdicts + averages — the ONLY permitted numbers), `profile.name` |
-| Version history | v1 — initial intake · v2 — Phase 4 fix (B-2): mechanical verbatim-numeral rules (character-for-character copy incl. decimal point, no derived/counted numerals, no % or unit attachments); removed invented-literal example ("12 points") (eval evidence: Layer 4 rounding violations — "74%"/"74" written for JSON "74.0") |
+| Consumed state | `trend_summary` (precomputed verdicts + averages — the ONLY permitted numbers), `profile.name`, `user_message` (identity-ask detection), `profile.core_subject` (identity path) |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-2): mechanical verbatim-numeral rules (character-for-character copy incl. decimal point, no derived/counted numerals, no % or unit attachments); removed invented-literal example ("12 points") (eval evidence: Layer 4 rounding violations — "74%"/"74" written for JSON "74.0") · v3 — Fix cycle: COACH_PERSONA prepended + identity-ask rule · v3-rev — the smoke test showed the persona line alone drowned the identity answer in trend narration, so the node detects identity asks deterministically and swaps to GREET_IDENTITY_V1 (identity line FIRST, core subject interpolated, same numeral rules; `greet_identity` role 0.6/200) |
 
 ```
 Welcome {name} back. Narrate their progress using ONLY these numbers:
