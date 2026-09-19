@@ -14,6 +14,7 @@
 | Judge tiering candidate (parked) | `llama-3.1-8b-instant` | 0.2 | 400 | Cost/rate-limit lever if free-tier limits bite — NOT active |
 | `core_syllabus` (Change-1) | placeholder | 0.4 | 700 | One-shot syllabus generation for a free-text core subject (6-10 topics + blurbs), cached at `data/syllabus/{slug}.json`; LLM-down → deterministic generic fallback, cached with `source=fallback` |
 | `remember` (Change-3) | placeholder | 0.3 | 250 | Memory write/recall turn — up to 3 guarded facts per turn or a digest-strict recall reply; scores are NEVER stored in memory (report card owns them) |
+| `discussion` (Fix cycle) | placeholder | 0.5 | 150 | Bounded honest answer to an open/opinion question (≤3 sentences + one track pointer); NO trend numbers injected — number-integrity holds trivially |
 
 Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]` (default Groq `https://api.groq.com/openai/v1`), `api_key=os.environ["LLM_API_KEY"]`, `model` from config.py. Changing provider = env change only. Per-role Max-token budgets above are now WIRED in code (B-8 fix, 2026-09-16): `config.get_llm` passes `max_tokens=ROLE_MAX_TOKENS[role]` — this registry stays the source of the values; amend both together.
 
@@ -21,16 +22,16 @@ Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]`
 
 ---
 
-## `router_classify` — v3
+## `router_classify` — v4
 
 | Property | Value |
 | --- | --- |
 | Node | `route_turn` — the LLM runs ONLY when `has_profile == True` AND `session_active == ""`; otherwise routing is deterministic (active session → specialist · no profile → onboarding) |
 | Prompt text | `src/prep_agent/prompts/router.py::ROUTER_CLASSIFY_V1` |
 | Model / temp / max tokens | placeholder / 0.0 / 150 |
-| Structured output | `IntentClassification {intent: dsa\|communication\|core_subject\|progress\|greet\|memory\|smalltalk\|exit, confidence: 0.0-1.0}` |
+| Structured output | `IntentClassification {intent: dsa\|communication\|core_subject\|progress\|greet\|memory\|discussion\|smalltalk\|exit, confidence: 0.0-1.0}` |
 | Consumed state | `user_message`, 1-line session context (last field practiced) |
-| Version history | v1 — initial intake · v2 — Phase 4 fix (B-5): dsa-vs-core_subject disambiguation rules + 8-line few-shot block (eval evidence: Layer 2 deterministic misroute "my arrays are weak" → core_subject/0.95; near-paraphrase "arrays are my weak area" routed dsa correctly) |
+| Version history | v1 — initial intake · v2 — Phase 4 fix (B-5): dsa-vs-core_subject disambiguation rules + 8-line few-shot block (eval evidence: Layer 2 deterministic misroute "my arrays are weak" → core_subject/0.95; near-paraphrase "arrays are my weak area" routed dsa correctly) · v3 — Change-1/C3: free-text core_subject wording, greet + memory categories · v4 — Fix cycle (live findings): `discussion` category added (opinion/open questions were misrouting into a core viva — live: "discuss about the prediction why are you skipping it" launched an uninvited viva — or bouncing in the clarify loop); identity/meta asks ("who are you") → greet; core_subject vs discussion disambiguation rule (quizzed vs answered) |
 
 ```
 You classify the user's message for a placement-prep coach.
@@ -176,16 +177,16 @@ Rules:
 
 ---
 
-## `clarify` — v1
+## `clarify` / `clarify-escalate` — v2
 
 | Property | Value |
 | --- | --- |
 | Node | `clarify` |
-| Prompt text | `src/prep_agent/prompts/router.py::CLARIFY_V1` |
+| Prompt text | `src/prep_agent/prompts/router.py::CLARIFY_V1` + `CLARIFY_ESCALATE_V1` |
 | Model / temp / max tokens | placeholder / 0.3 / 120 |
 | Structured output | none (plain message) |
-| Consumed state | `user_message`, `intent` (best-guess + confidence) |
-| Version history | v1 — initial intake |
+| Consumed state | `user_message`, `intent` (best-guess + confidence), `clarify_streak` (Fix: consecutive-smalltalk counter computed by `load_context` from LAST turn's intent) |
+| Version history | v1 — initial intake · v2 — Fix cycle (live findings): COACH_PERSONA prepended (persona leak: "who are you" → "I am Qwen3.7"); acknowledge-the-ask half-line rule; CLARIFY_ESCALATE_V1 added — at `clarify_streak >= 2` the node swaps to it and ANSWERS honestly instead of a third re-ask (live: two clarifies then "discuss about the prediction" misrouted) |
 
 ```
 The message "{user_message}" was ambiguous (best guess: {intent},
@@ -193,6 +194,29 @@ confidence {confidence}). Ask ONE short clarifying question that offers the
 likely options conversationally (practice dsa / communication / core subject /
 see progress). Never route silently; never apologize twice.
 ```
+
+Escalate variant (selected at `clarify_streak >= 2`) — answers instead of asking:
+
+```
+The user's message "{user_message}" was ambiguous, and they have already been
+asked to clarify twice — do NOT ask again. Give a brief, honest, on-topic answer
+to what they actually asked (max 3 sentences, your real take — no dodging), then
+close with ONE short line pointing back at the tracks (dsa / communication /
+core subject / progress). Max 4 sentences total.
+```
+
+---
+
+## `discussion` — v1 (Fix cycle)
+
+| Property | Value |
+| --- | --- |
+| Node | `discussion` (router intent `discussion` — new branch in the edge table) |
+| Prompt text | `src/prep_agent/prompts/greetings.py::DISCUSSION_V1` |
+| Model / temp / max tokens | placeholder / 0.5 / 150 |
+| Structured output | none (plain message) |
+| Consumed state | `user_message` ONLY — no trend numbers injected, so number-integrity holds trivially; the prompt forbids inventing performance statistics |
+| Version history | v1 — Fix cycle: the escape hatch for "what do you think about X" (live failure: open questions bounced into the clarify loop or misrouted into a core viva). ≤3 sentences of real take + one track pointer; LLM-down fallback is honest about the outage instead of bluffing |
 
 ---
 

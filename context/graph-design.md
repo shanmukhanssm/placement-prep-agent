@@ -66,7 +66,8 @@ Onboarding is a node-level sub-phase machine (not a compiled subgraph): collects
 | `onboarding` | node (sub-phase machine) | onboarding_collector (temp 0.3) | write_profile, init_report_card | `user_message`, `session_data.onboarding` | `session_data.onboarding`, on completion: `profile`, `has_profile=True`, `session_active=""` |
 | `greet_returning` | node | greet_returning (temp 0.6) | — | `trend_summary` (precomputed numbers only), `profile.name` | `assistant_message` |
 | `progress_talk` | node | progress_talk (temp 0.5) | — | `user_message`, `trend_summary` | `assistant_message` |
-| `clarify` | node | clarify (temp 0.3) | — | `user_message`, `intent` | `assistant_message` |
+| `clarify` | node | clarify (temp 0.3) | — | `user_message`, `intent`, `clarify_streak` | `assistant_message` |
+| `discussion` | node | discussion (temp 0.5) | — | `user_message` | `assistant_message` |
 | `farewell` | node | farewell (temp 0.5) | — | `trend_summary` | `assistant_message`, `session_active=""` |
 | `dsa_session` | compiled subgraph | selector 0.7 / evaluator 0.2 (inside) | read_report_card (selector + record-id seq), save_session_results (in wrap) | `user_message`, `session_data.dsa`, injected `weak_areas` | `session_data.dsa`, `assistant_message`, `session_active=""` (set in dsa_wrap) |
 | `comm_session` | compiled subgraph | interviewer 0.8 / judge 0.2 / wrap 0.5 (inside) | read_report_card (record-id seq), save_session_results (in wrap) | `user_message`, `session_data.comm`, injected `profile_digest` | `session_data.comm`, `assistant_message`, `session_active=""` (set in comm_wrap) |
@@ -86,6 +87,7 @@ Onboarding is a node-level sub-phase machine (not a compiled subgraph): collects
 | `route_intent` | `route_turn` | 3f. `intent == "greet"` — Change-3: a pure greeting from a known student finally reaches the long-built greet_returning node | `greet_returning` |
 | `route_intent` | `route_turn` | 3g. `intent == "memory"` — Change-3: durable personal facts / recall / reset asks (reset answered honestly in code — the agent can never wipe memory) | `remember` |
 | `route_intent` | `route_turn` | 3h. `intent == "smalltalk"` — the route_turn node normalizes `confidence < 0.6` to `smalltalk`, so the edge stays a pure string match | `clarify` |
+| `route_intent` | `route_turn` | 3i. `intent == "discussion"` — Fix cycle: open/opinion questions get a bounded honest answer instead of a clarify loop or a core-viva misroute | `discussion` |
 | `route_after_specialist` | each specialist wrap | session complete | END (router regains control next turn) |
 
 ---
@@ -138,6 +140,7 @@ class MainState(BaseModel):
     # routing
     session_active: Literal["", "dsa", "communication", "core_subject"] = ""   # overwrite
     intent: str = ""                                                     # overwrite
+    clarify_streak: int = 0                                              # overwrite — Fix: consecutive clarify turns; load_context computes, clarify consumes
     # specialist working state (opaque dict at parent level; typed inside subgraphs)
     session_data: dict = {}                                              # overwrite — one writer per turn
 ```
@@ -188,9 +191,10 @@ class MainState(BaseModel):
 - **`core_judge`**: 0–10 per answer against `expected_answer_points` (§3.2 deterministic derivation); one disambiguating probe per question (Q1–Q7, session ≤3, judge-requested via `probe_needed`, code-enforced) re-scores once on combined evidence; skip ("skipped by student", 0.0, counts in the asked total) and quit (confirm once; ≥5 asked saves, else no record) are code-owned; 3 consecutive skips → check-in; early close at ≥8 when ≥3 of the last 4 answers score ≤2.
 - **`core_wrap`**: score = mean × 10 (un-scored excluded); topic = comma-joined canonical topics asked, deduplicated in asked order (behavior-core §6); record-id seq minted via `read_report_card`; writes one `SessionRecord`; debrief = score line + per-question table with "Revise:" flags + model answers (expected points) + the 2 weakest topics; `session_active=""`.
 
-### `progress_talk` / `clarify` / `farewell`
+### `progress_talk` / `clarify` / `discussion` / `farewell`
 - **`progress_talk`:** conversational answer to "how am I doing" strictly from `trend_summary` numbers (same no-invented-numbers rule as greet).
-- **`clarify`:** one short clarifying question when intent is ambiguous; never routes silently.
+- **`clarify`:** one short clarifying question when intent is ambiguous; never routes silently. Fix cycle: at `clarify_streak >= 2` (computed by `load_context` from last turn's intent) it swaps to CLARIFY_ESCALATE_V1 — an honest answer instead of a third re-ask, closing the live clarify loop.
+- **`discussion`:** Fix cycle — bounded honest answer (≤3 sentences) to open/opinion questions ("what do you think about X") + one track pointer; no trend numbers injected, LLM-down fallback says so instead of bluffing.
 - **`farewell`:** goodbye + one-line session recap (sessions completed, fields practiced today from state).
 
 ---
