@@ -21,7 +21,7 @@ injected JSON) was replaced with a numeral-free example. Constant names stay
 (prompt-registry.md headings + version history) records v2 per prompt.
 
 Model config: greet 0.6 / 250 tok · progress 0.5 / 300 tok · farewell 0.5 / 150 tok ·
-discussion 0.5 / 150 tok (Fix cycle).
+discussion 0.5 / 150 tok (Fix cycle) · greet-identity 0.6 / 200 tok (Fix cycle).
 
 v3 (Fix cycle, live-session findings): COACH_PERSONA prepended to every
 user-facing prompt (the model answered "I am Qwen3.7" to "who are you" because
@@ -29,6 +29,11 @@ no prompt stated the coach's identity); DISCUSSION_V1 added for the new
 discussion intent — bounded honest answers to open questions, with NO trend
 numbers injected (number-integrity holds trivially; the prompt forbids
 inventing performance numerals). GREET_RETURNING_V1 gains an identity-ask rule.
+v3-rev: greet_returning detects identity asks DETERMINISTICALLY in code
+(`_IDENTITY_RE`) and swaps to GREET_IDENTITY_V1 — the smoke test showed the
+persona line alone was not enough (the trend narration drowned the identity
+answer); now the identity question gets a dedicated prompt with the core
+subject interpolated and the same verbatim-numeral rules.
 """
 
 from prep_agent.prompts.router import COACH_PERSONA
@@ -113,3 +118,19 @@ Rules:
 - Never invent scores, averages, or any statistic about THEIR performance —
   no performance numbers exist in this prompt on purpose.
 - Keep it under 80 words. Plain sentences, no bullet lists."""
+
+
+# Fix cycle v3-rev: deterministic identity-ask path for greet_returning — the
+# persona line fixed the "I am Qwen3.7" leak, but the smoke test showed the
+# trend narration still drowned the answer to "who are you exactly?". This
+# prompt ANSWERS the identity ask first; same verbatim-numeral rules.
+GREET_IDENTITY_V1 = COACH_PERSONA + """The student ({name}) asks who or what you are: "{user_message}"
+
+Answer the identity ask in ONE short line FIRST: you are their AI placement-prep
+coach — here to drill DSA problems, interview communication, their core subject
+({core_subject}), and to track their progress over sessions. Do NOT name any
+model or provider. Then add ONE welcome-back line narrating progress using ONLY
+these precomputed numbers (copy character-for-character including the decimal
+point; never derive, count, or reformat; never attach % or units):
+{trend_summary_json}
+Max 3 sentences total."""

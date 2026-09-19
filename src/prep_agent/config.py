@@ -44,6 +44,7 @@ ROLE_TEMPERATURE: Final[dict[str, float]] = {
     "core_syllabus": 0.4,  # Change-1: one-shot syllabus generation for free-text subjects
     "remember": 0.3,  # Change-3: memory write/recall turn
     "discussion": 0.5,  # Fix: bounded honest answers to open/opinion questions
+    "greet_identity": 0.6,  # Fix: greet's dedicated identity-ask path (same voice as greet)
 }
 
 # per-role max_tokens sourced from prompt-registry.md Model Policy — same-commit sync
@@ -65,6 +66,7 @@ ROLE_MAX_TOKENS: Final[dict[str, int]] = {
     "core_syllabus": 700,  # 6-10 topics with blurbs
     "remember": 250,
     "discussion": 150,  # Fix: ≤3-sentence take + one track pointer
+    "greet_identity": 200,  # Fix: identity line first + one trend line, tight budget
 }
 
 # --- Run limits (graph-design.md Run Limits table + behavior-spec fan-outs) ---

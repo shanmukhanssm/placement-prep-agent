@@ -18,12 +18,14 @@ trivially there.
 
 import json
 import logging
+import re
 from typing import Any
 
 from prep_agent.config import message_text
 from prep_agent.prompts.greetings import (
     DISCUSSION_V1,
     FAREWELL_V1,
+    GREET_IDENTITY_V1,
     GREET_RETURNING_V1,
     PROGRESS_TALK_V1,
 )
@@ -31,6 +33,13 @@ from prep_agent.prompts.router import CLARIFY_ESCALATE_V1, CLARIFY_V1
 from prep_agent.state import MainState, TrendVerdict
 
 logger = logging.getLogger("greetings")
+
+# Fix cycle v3-rev: identity/meta asks route to greet (router v4) — this narrow
+# regex picks the DEDICATED identity prompt so the question is actually answered
+# ("I am Qwen3.7" leak + drowned-identity-answer, both live findings).
+_IDENTITY_RE = re.compile(
+    r"who are you|what are you|who r u|what r u|who're you|your name|who am i talking", re.I
+)
 
 
 def _trend_json(trend_summary: dict[str, TrendVerdict]) -> str:
@@ -98,15 +107,37 @@ def greet_returning(state: MainState) -> dict[str, Any]:
     """Welcome back + narrate trend verdicts from trend_summary only; ask what to practice.
 
     LLM failure → templated greeting built from the same numbers (code, no LLM).
+
+    Fix cycle v3-rev: identity asks ("who are you exactly?") take a DEDICATED
+    prompt — the persona line alone stopped the model-name leak but the smoke
+    test showed the trend narration still drowned the answer. The regex is
+    deliberately narrow (identity/meta only); anything else keeps the standard
+    welcome, and the identity path keeps the same verbatim-numeral rules.
     """
     name = state.profile.name if state.profile else "there"
+    trend_json = _trend_json(state.trend_summary)
     fallback = (
         f"Welcome back, {name}! Here's where you stand: {_trend_narration(state.trend_summary)}. "
         "What do you want to practice today?"
     )
+    if _IDENTITY_RE.search(state.user_message):
+        core = state.profile.core_subject if state.profile else "your subjects"
+        identity_fallback = (
+            f"I'm your AI placement-prep coach, {name} — DSA problems, interview "
+            f"communication, {core}, and progress tracking. "
+            f"{_trend_narration(state.trend_summary)}. "
+            "What do you want to practice today?"
+        )
+        prompt = GREET_IDENTITY_V1.format(
+            name=name,
+            user_message=state.user_message,
+            core_subject=core,
+            trend_summary_json=trend_json,
+        )
+        return {"assistant_message": _llm_narrate("greet_identity", prompt, identity_fallback)}
     prompt = GREET_RETURNING_V1.format(
         name=name,
-        trend_summary_json=_trend_json(state.trend_summary),
+        trend_summary_json=trend_json,
     )
     return {"assistant_message": _llm_narrate("greet_returning", prompt, fallback)}
 

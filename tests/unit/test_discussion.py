@@ -113,6 +113,65 @@ def test_clarify_escalates_at_streak_two(monkeypatch) -> None:
     assert "Honest answer" in out["assistant_message"]
 
 
+# --- greet identity path (v3-rev: persona line alone drowned the answer) ---
+
+
+def test_greet_identity_ask_uses_dedicated_prompt(monkeypatch) -> None:
+    import prep_agent.config as config
+    from prep_agent.nodes.greetings import greet_returning
+    from prep_agent.state import Profile
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(
+        config, "get_llm", lambda role: _CapturingLLM(captured, f"I'm your placement-prep coach, {role}.")
+    )
+    profile = Profile.model_validate(
+        {
+            "name": "Arjun",
+            "degree_branch": "B.Tech CSE",
+            "grad_year": 2027,
+            "target_roles": ["SDE"],
+            "weak_areas": ["arrays"],
+            "core_subject": "DBMS and Operating Systems",
+        }
+    )
+    state = MainState(
+        user_message="who are you exactly?",
+        profile=profile,
+        has_profile=True,
+        clarify_streak=0,
+    )
+    out = greet_returning(state)
+    # the identity prompt ANSWERS the ask first and interpolates the core subject;
+    # the placeholder is consumed by .format(), so assert on the rendered body
+    assert "Answer the identity ask in ONE short line FIRST" in captured["prompt"]
+    assert "DBMS and Operating Systems" in captured["prompt"]
+    assert "coach" in out["assistant_message"].lower()
+
+
+def test_greet_normal_message_keeps_standard_prompt(monkeypatch) -> None:
+    import prep_agent.config as config
+    from prep_agent.nodes.greetings import greet_returning
+    from prep_agent.state import Profile
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(config, "get_llm", lambda role: _CapturingLLM(captured, "Welcome back!"))
+    profile = Profile.model_validate(
+        {
+            "name": "Arjun",
+            "degree_branch": "B.Tech CSE",
+            "grad_year": 2027,
+            "target_roles": ["SDE"],
+            "weak_areas": ["arrays"],
+            "core_subject": "DBMS",
+        }
+    )
+    state = MainState(user_message="hi, what's up?", profile=profile, has_profile=True)
+    greet_returning(state)
+    # identity prompt NOT selected — only its body carries this line (persona is shared)
+    assert "Answer the identity ask in ONE short line FIRST" not in captured["prompt"]
+
+
 # --- syllabus blurb leniency ---
 
 
