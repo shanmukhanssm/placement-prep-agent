@@ -28,6 +28,7 @@ from prep_agent.config import call_structured
 from prep_agent.prompts.onboarding import ONBOARDING_COLLECTOR_V1
 from prep_agent.state import MainState, Profile
 from prep_agent.tools.errors import ToolError
+from prep_agent.tools.memory import write_basics
 from prep_agent.tools.report_card import (
     InitReportCardArgs,
     WriteProfileArgs,
@@ -346,6 +347,11 @@ def onboarding(state: MainState) -> dict[str, Any]:
                 "Say 'continue' and I'll try again."
             ),
         }
+    # Change-3: basics land in cross-session memory FIRST (owner priority rule) —
+    # best-effort: a memory write failure never blocks onboarding (profile.json is
+    # the source of record; the digest just stays thinner until it succeeds).
+    if not write_basics(profile.model_dump()):
+        logger.warning("[onboarding] memory basics write failed — profile still saved")
     # B-7b: the completing turn ALWAYS shows the welcome template. The collector's
     # turn.message was drafted before this turn's extraction landed, so on the
     # completing turn it is often a stale re-ask — surfacing it as the welcome confused

@@ -65,7 +65,9 @@ class IntentClassification(BaseModel):
     "smalltalk" directly for low-confidence — the code does the normalization.
     """
 
-    intent: Literal["dsa", "communication", "core_subject", "progress", "smalltalk", "exit"]
+    intent: Literal[
+        "dsa", "communication", "core_subject", "progress", "greet", "memory", "smalltalk", "exit"
+    ]
     confidence: float = Field(ge=0.0, le=1.0)
 
 
@@ -79,6 +81,7 @@ class MainState(BaseModel):
     profile: Profile | None = None  # overwrite
     has_profile: bool = False  # overwrite
     trend_summary: dict[str, TrendVerdict] = Field(default_factory=dict)  # overwrite
+    memory_digest: str = ""  # overwrite — Change-3: basics first + trend line, one string
     turn_count: int = 0  # overwrite (+1 in load_context)
     # routing
     session_active: Literal["", "dsa", "communication", "core_subject"] = ""  # overwrite

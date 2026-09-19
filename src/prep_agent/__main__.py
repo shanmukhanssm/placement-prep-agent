@@ -3,9 +3,14 @@
 The graph ends its turn (reaches END) whenever it needs input; this loop prints
 assistant_message and feeds the next user_message back in. The CLI is the only
 print surface (code-standards.md). Run: python -m prep_agent
+
+Change-3: ``python -m prep_agent reset-memory`` is the ONLY reset path for the
+cross-session memory file — deliberately OUTSIDE the graph, so no node, prompt,
+or LLM turn can ever wipe the student's memory (owner requirement).
 """
 
 import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -57,5 +62,23 @@ def chat_loop() -> None:
         print(f"coach> {result['assistant_message']}")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Chat REPL by default; subcommands keep their one-job simplicity."""
+    if len(sys.argv) > 1:
+        command = sys.argv[1].strip().lower().replace("_", "-")
+        if command == "reset-memory":
+            from prep_agent.tools.memory import reset_memory  # noqa: PLC0415 — CLI-only path
+
+            if reset_memory():
+                print("Memory cleared — I'll start fresh next time.")
+            else:
+                print("Reset failed — the memory file could not be removed.")
+            return
+        print(f"Unknown command: {sys.argv[1]}")
+        print("Usage: python -m prep_agent [reset-memory]")
+        raise SystemExit(2)
     chat_loop()
+
+
+if __name__ == "__main__":
+    main()

@@ -21,6 +21,7 @@ from prep_agent.config import DB_PATH
 from prep_agent.nodes.greetings import clarify, farewell, greet_returning, progress_talk
 from prep_agent.nodes.load_context import load_context
 from prep_agent.nodes.onboarding import onboarding
+from prep_agent.nodes.remember import remember
 from prep_agent.nodes.route_turn import route_turn
 from prep_agent.state import MainState, Profile, TrendVerdict
 from prep_agent.subgraphs.comm import comm_session
@@ -28,13 +29,16 @@ from prep_agent.subgraphs.core import core_session
 from prep_agent.subgraphs.dsa import dsa_session
 
 # graph-design.md edge table — route_intent's declared branch set (pure string match;
-# route_turn normalizes session_active pinning and low confidence INTO the intent string)
+# route_turn normalizes session_active pinning and low confidence INTO the intent string).
+# Change-1/C3: "greet" wires the long-built greet_returning node; "memory" wires remember.
 _BRANCHES: dict[Hashable, str] = {
     "onboarding": "onboarding",
     "dsa": "dsa_session",
     "communication": "comm_session",
     "core_subject": "core_session",
     "progress": "progress_talk",
+    "greet": "greet_returning",
+    "memory": "remember",
     "exit": "farewell",
     "smalltalk": "clarify",
 }
@@ -62,6 +66,7 @@ def build_graph(checkpointer: BaseCheckpointSaver[Any] | None = None) -> Any:
     g.add_node("route_turn", route_turn)
     g.add_node("onboarding", onboarding)
     g.add_node("greet_returning", greet_returning)
+    g.add_node("remember", remember)
     g.add_node("progress_talk", progress_talk)
     g.add_node("clarify", clarify)
     g.add_node("farewell", farewell)
