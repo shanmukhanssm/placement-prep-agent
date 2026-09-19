@@ -3,6 +3,10 @@
 Drives the compiled subgraph in isolation with canned LLM outputs (hermetic). Records
 land in the tmp data dir via the real save_session_results (seeded_card fixture).
 
+Change-2: the selector is LLM-free and bank-based — the three selection tests below
+pin the reasoning policy (weak pool → tier frontier → topic diversity → frontier id);
+the solved/partial tracking pins live in tests/unit/test_dsa_bank_selection.py.
+
 H2/H5 regression tests: re-entry after a wrapped session starts FRESH via the parent
 wrapper dsa_session (no phantom record, no stale-score leak); bare exit tokens
 ("bye"/"quit"/…) wrap as a give-up instead of trapping the user mid-session.
@@ -15,7 +19,7 @@ import pytest
 
 from prep_agent.config import DSA_PASS_THRESHOLD
 from prep_agent.state import MainState, Profile
-from prep_agent.subgraphs.dsa import _select_entry, dsa_app, dsa_session
+from prep_agent.subgraphs.dsa import _select_question, dsa_app, dsa_session
 from prep_agent.subgraphs.state import DsaState
 from prep_agent.tools.report_card import read_report_card
 
@@ -174,7 +178,7 @@ def test_dsa_faults_must_use_taxonomy(llm_queues, seeded_card):
 
 @pytest.mark.unit
 def test_dsa_selection_weak_area_pool(llm_queues, seeded_card):
-    # one past session so the first-ever override doesn't win; weak pool applies
+    # one past session so the tier anchor exists; weak pool applies over bank topics
     history = [
         {
             "record_id": "2026-09-13-dsa-1",
@@ -186,8 +190,10 @@ def test_dsa_selection_weak_area_pool(llm_queues, seeded_card):
             "questions": [],
         },
     ]
-    entry = _select_entry(weak_areas=["dynamic programming", "dp"], history=history)
-    assert entry["topic"] == "dp-basics"  # weak-area pool → weak topics only
+    selection = _select_question(weak_areas=["dynamic programming", "dp"], history=history)
+    assert selection.entry["topic"] == "dp-basics"  # weak-area pool → weak topics only
+    assert selection.entry["difficulty"] == "medium"  # 60 = practice band → hold (medium)
+    assert "drilling" in selection.reason.lower()  # weak-list mention in the WHY line
 
 
 @pytest.mark.unit
@@ -203,19 +209,60 @@ def test_dsa_selection_recency_and_calibration(llm_queues, seeded_card):
             "questions": [],
         },
     ]
-    entry = _select_entry(weak_areas=[], history=history)
-    # arrays served last session (recency filter drops it); avg 90 > 75 + passed medium
-    # in history → medium/hard allowed
-    assert entry["topic"] != "arrays"
-    assert entry["difficulty"] in ("medium", "hard")
+    selection = _select_question(weak_areas=[], history=history)
+    # arrays served last session (recency filter drops it); 90 ≥ 80 → step UP a tier
+    assert selection.entry["topic"] != "arrays"
+    assert selection.entry["difficulty"] == "hard"
+    assert "stepping up" in selection.reason.lower()
 
 
 @pytest.mark.unit
-def test_dsa_first_ever_session_friendly_start(llm_queues, seeded_card):
-    for _ in range(5):  # seeded pick is date-stable; properties must hold every time
-        entry = _select_entry(weak_areas=["trees"], history=[])
-        assert entry["topic"] in ("arrays", "strings")  # first-ever override
-        assert entry["difficulty"] in ("easy", "medium")
+def test_dsa_first_ever_session_starts_easy(llm_queues, seeded_card):
+    for _ in range(3):  # fully deterministic — properties must hold every time
+        selection = _select_question(weak_areas=["trees"], history=[])
+        assert selection.entry["topic"] == "trees"  # weak pool respected
+        assert selection.entry["difficulty"] == "easy"  # friendly calibrated start
+        assert "start easy" in selection.reason.lower()
+
+
+@pytest.mark.unit
+def test_dsa_score_90_on_first_easy_earns_medium(llm_queues, seeded_card):
+    """The owner's example: 90 on a first easy question → a medium question next."""
+    history = [
+        {
+            "record_id": "2026-09-13-dsa-1",
+            "date": "2026-09-13",
+            "field": "dsa",
+            "topic": "arrays",
+            "score": 90.0,
+            "duration_min": 5.0,
+            "questions": [{"question": "Q1 (easy) — pair sum", "verdict": "pass: x", "score": 90.0}],
+        },
+    ]
+    selection = _select_question(weak_areas=[], history=history)
+    assert selection.entry["difficulty"] == "medium"  # easy + pass → medium
+    assert selection.entry["topic"] != "arrays"  # and a different topic (covered + recency)
+
+
+@pytest.mark.unit
+def test_dsa_low_score_eases_back_down(llm_queues, seeded_card):
+    """< 50 on the last session → one tier down. The record carries NO parseable
+    Q-id (legacy shape): a real low-score bank session creates a partial, and the
+    partial follow-up promise intentionally preempts tier reasoning."""
+    history = [
+        {
+            "record_id": "2026-09-13-dsa-1",
+            "date": "2026-09-13",
+            "field": "dsa",
+            "topic": "trees",
+            "score": 30.0,
+            "duration_min": 5.0,
+            "questions": [],  # legacy record — no Q-id, hence no partial to re-serve
+        },
+    ]
+    selection = _select_question(weak_areas=[], history=history)
+    assert selection.entry["difficulty"] == "easy"  # < 50 → one tier down (clamped)
+    assert "easing back" in selection.reason.lower()
 
 
 # --- bug-fix regression tests (H2 re-entry, H5 exit tokens) ---

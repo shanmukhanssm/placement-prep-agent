@@ -1,36 +1,58 @@
-"""dsa_session specialist subgraph — REAL node logic (Phase 2.3).
+"""dsa_session specialist subgraph — REAL node logic (Change-2: bank + reasoning).
 
-Selection is DETERMINISTIC (behavior-dsa.md §2.2): weak-area pool → recency filter →
-least-recently-served ranking → seeded tie-break → difficulty calibration, over the
-seed catalog in prompts/dsa.py. The selector LLM only phrases the statement; catalog
-fields (optimized_approach / edge_cases) never pass through the LLM. The evaluator
-grades attempts (DSA_EVALUATOR_V1) with the locked failure path — one retry, then a
-conservative optimality_pct = 0. Termination: pass (≥ 80) · explicit give-up or a bare
-exit token ("bye"/"quit"/… — same give-up path, H5) · forced stop after DSA_MAX_ATTEMPTS.
-Re-entry after a wrapped session starts a FRESH selection (H2): the parent wrapper
-dsa_session owns the full namespace reset (attempts/attempt_count/final_score/gave_up/
-meta_count all default), and route_by_phase defensively maps "done" to the selector so a
-stale "done" can never grade an attempt. dsa_wrap mints the record id with the per-day
-per-field seq and reveals the reference approach per the spec templates.
+Selection is DETERMINISTIC and REASONING-BASED over the shipped 100-question bank
+(tools/dsa_bank.py — ids 1..100 in ascending global difficulty; tiers locked to
+the id: 1-30 easy, 31-70 medium, 71-100 hard). The student's question state is
+derived from the report-card history (read_history — the tracking store, full
+retention, survives ANY number of sessions): pass-terminated questions are SOLVED
+and never re-served; non-pass questions are PARTIAL and come back FIRST, announced
+with a one-line note derived from the stored verdict ("last time you reached
+brute force at 55/100 — push for the optimal approach now").
 
-Registry deltas live in the same commit as this file (see progress-tracker.md).
+New-question reasoning, in order:
+  1. Tier frontier from the LAST session's score — pass steps one tier up, < 50
+     steps down, else hold (a 90 on a first easy question earns a medium next).
+  2. Topic diversity — least-covered topics first; topics served in the last two
+     DSA sessions are excluded when possible (covered topic → different topic).
+  3. Weak-area pool filter (§2.2 rule 1) still applies first when it names bank
+     topics; an emptied pool falls back to all topics.
+  4. Difficulty frontier within the chosen topic = lowest unsolved id in tier.
+
+Every pick is announced with its WHY line — the reasoning is visible to the
+student while staying fully deterministic in code. The student sees ONLY
+"Question {id}" plus the bank statement: title, topic and difficulty labels stay
+internal (owner rule — numbers only). The selector makes NO LLM call anymore;
+bank statements are verbatim. The evaluator grades against the bank's ground
+truth (DSA_EVALUATOR_V1 — optimized_approach / edge_cases ride from the bank,
+never through the LLM) with the locked failure path: one retry, then a
+conservative optimality_pct = 0. Termination: pass (≥ 80) · explicit give-up or
+a bare exit token (same give-up path, H5) · forced stop after DSA_MAX_ATTEMPTS.
+dsa_wrap mints the record with a "Q{id} (tier) — brief" question line — that line
+is exactly what future selections parse, so completion tracking persists across
+sessions with no extra state file (history IS the store).
+
+Re-entry after a wrapped session starts a FRESH selection (H2): the parent
+wrapper dsa_session owns the full namespace reset, and route_by_phase defensively
+maps "done" to the selector so a stale "done" can never grade an attempt.
 """
 
 import logging
-import random
+import re
 from datetime import datetime
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 
 from prep_agent.config import DSA_MAX_ATTEMPTS, DSA_PASS_THRESHOLD, call_structured
-from prep_agent.prompts.dsa import DSA_CATALOG, DSA_EVALUATOR_V1, DSA_SELECTOR_V1
+from prep_agent.prompts.dsa import DSA_EVALUATOR_V1
 from prep_agent.state import MainState, QuestionRecord
 from prep_agent.subgraphs.state import AttemptVerdict, DsaState, ProblemSpec
+from prep_agent.tools.dsa_bank import bank_entry, load_bank, tier_of, tier_step
 from prep_agent.tools.errors import ToolError
 from prep_agent.tools.report_card import (
     SaveSessionArgs,
-    read_report_card,
+    read_history,
     save_session_results,
 )
 
@@ -101,6 +123,33 @@ _TOPIC_ALIASES: dict[str, str] = {
     "greedy": "greedy",
 }
 
+# topic → phrase for the WHY line (display only — never leaks the raw tag into the
+# problem line, only into the reasoning narration the owner asked for)
+_TOPIC_DISPLAY: dict[str, str] = {
+    "arrays": "arrays",
+    "strings": "strings",
+    "hashmaps": "hashmaps",
+    "two-pointers": "two pointers",
+    "sliding-window": "sliding window",
+    "stack": "stacks",
+    "linked-list": "linked lists",
+    "trees": "trees",
+    "graphs-basics": "graphs",
+    "dp-basics": "dynamic programming",
+    "greedy": "greedy choices",
+    "sorting-searching": "sorting and searching",
+    "bit-manipulation": "bit manipulation",
+    "math": "number tricks",
+}
+
+
+class Selection(BaseModel):
+    """One deterministic pick: the bank entry + the WHY narration + partial note."""
+
+    entry: dict[str, Any]
+    reason: str = ""
+    note: str = ""  # non-empty on a partial follow-up
+
 
 def _f(value: object) -> float:
     """Narrow a JSON payload number (dict[str, object] values) to float safely."""
@@ -108,116 +157,247 @@ def _f(value: object) -> float:
 
 
 def _dsa_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """DSA records, newest first (read_report_card already returns newest-first)."""
+    """DSA records, newest first (read_history already returns newest-first)."""
     return [r for r in history if r.get("field") == "dsa"]
 
 
-def _topic_pool(weak_areas: list[str]) -> list[dict[str, str]]:
-    """Weak-area pool (§2.2 rule 1): weak topics only when they name catalog areas."""
+_QID_RE = re.compile(r"^Q(\d+) \(")
+
+
+def _qid_of(question: str) -> int | None:
+    """Bank id from a record's question line ("Q47 (medium) — gist"); legacy → None."""
+    match = _QID_RE.match(question.strip())
+    return int(match.group(1)) if match else None
+
+
+def _termination_of(verdict: str) -> str:
+    """pass / give-up / max-attempts from the wrap's verdict line prefix."""
+    low = verdict.strip().lower()
+    if low.startswith("pass"):
+        return "pass"
+    if low.startswith("give-up"):
+        return "give-up"
+    if low.startswith("max-attempts"):
+        return "max-attempts"
+    return "unknown"
+
+
+def _latest_question_state(history: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """qid → newest attempt state over the FULL history (newest record wins).
+
+    This is the solved/partial tracker: a qid is SOLVED iff its newest termination
+    is 'pass' — otherwise it is PARTIAL and owed a follow-up. Survives N sessions
+    because read_history retains everything.
+    """
+    latest: dict[int, dict[str, Any]] = {}
+    for record in _dsa_history(history):  # newest first
+        date = str(record.get("date", ""))
+        for question in record.get("questions") or []:
+            qid = _qid_of(str(question.get("question", "")))
+            if qid is None or qid in latest:
+                continue
+            latest[qid] = {
+                "score": _f(question.get("score", 0.0)),
+                "termination": _termination_of(str(question.get("verdict", ""))),
+                "verdict": str(question.get("verdict", "")),
+                "date": date,
+            }
+    return latest
+
+
+def _partial_note(verdict: str, score: float) -> str:
+    """The one-line note the owner asked for — mechanism from the stored verdict."""
+    match = re.search(r" — (.*?) — \d+/100", verdict)
+    mechanism = match.group(1).strip() if match else ""
+    if mechanism and mechanism.lower() not in ("no valid attempt", "unclear"):
+        return (
+            f"Last time you reached {mechanism} at {score:.0f}/100 — "
+            "push for the optimal approach this time."
+        )
+    return f"Last attempt stopped at {score:.0f}/100 — push further this time."
+
+
+def _topic_pool(weak_areas: list[str]) -> list[str]:
+    """Weak-area pool (§2.2 rule 1) over bank topics; empty pool rule → all topics."""
+    all_topics = sorted({e["topic"] for e in load_bank()})
     if not weak_areas:
-        return list(DSA_CATALOG)
+        return all_topics
     wanted: set[str] = set()
     for area in weak_areas:
         low = area.lower().strip()
         for alias, topic in _TOPIC_ALIASES.items():
             if alias in low:
                 wanted.add(topic)
-        for entry in DSA_CATALOG:  # direct name overlap both ways
-            topic = entry["topic"]
+        for topic in all_topics:  # direct name overlap both ways
             if topic in low or low in topic:
                 wanted.add(topic)
-    pool = [e for e in DSA_CATALOG if e["topic"] in wanted]
-    return pool or list(DSA_CATALOG)  # empty pool rule: all topics, ranked LRS
+    pool = [topic for topic in all_topics if topic in wanted]
+    return pool or all_topics  # emptied pool rule: all topics
 
 
-def _select_entry(weak_areas: list[str], history: list[dict[str, Any]]) -> dict[str, str]:
-    """Deterministic problem selection — behavior-dsa.md §2.2, rules 1-7."""
-    dsa_records = _dsa_history(history)
-    served_topics = [str(r.get("topic", "")) for r in dsa_records]
-    served_titles = {
-        str(q.get("question", "")).split(" (")[0]
-        for r in dsa_records
-        for q in (r.get("questions") or [])
-    }
+def _weak_hit(topic: str, weak_areas: list[str]) -> bool:
+    """Does any weak area name this topic (directly or via alias)?"""
+    for area in weak_areas:
+        low = area.lower()
+        if topic in low:
+            return True
+        for alias, target in _TOPIC_ALIASES.items():
+            if target == topic and alias in low:
+                return True
+    return False
 
-    pool = _topic_pool(weak_areas)
-    recent2 = set(served_topics[:2])  # recency filter: last 2 DSA sessions
-    filtered = [e for e in pool if e["topic"] not in recent2]
-    if filtered:
-        pool = filtered  # emptied pool → keep and rank least-recently-served below
 
-    def _rank(entry: dict[str, str]) -> tuple[int, str]:
-        # never-served beats served; among served, least-recently-served first
-        idx = served_topics.index(entry["topic"]) if entry["topic"] in served_topics else 10_000
-        return (-idx, entry["title"])
+def _compose_reason(base: str, topic: str, weak_areas: list[str]) -> str:
+    display = _TOPIC_DISPLAY.get(topic, topic.replace("-", " "))
+    if _weak_hit(topic, weak_areas):
+        return f"{base} {display.capitalize()} is on your weak list, so we're drilling it."
+    return f"{base} This one works {display}."
 
-    scores = [_f(r.get("score", 0.0)) for r in dsa_records[:3]]
-    avg_recent = sum(scores) / len(scores) if scores else 50.0
-    first_ever = not dsa_records
 
-    if first_ever:  # rule 6: friendly calibrated start regardless of weak areas
-        pool = [e for e in DSA_CATALOG if e["topic"] in ("arrays", "strings")]
-        allowed = {"easy", "medium"}
-    elif avg_recent < 50:  # rule 5: seeded coin easy/medium — keep both, pick below
-        allowed = {"easy", "medium"}
-    elif avg_recent <= 75:
-        allowed = {"medium"}
-    else:
-        passed_medium = {
-            str(r.get("topic", ""))
-            for r in dsa_records
-            if _f(r.get("score", 0.0)) >= DSA_PASS_THRESHOLD
-        }
-        allowed = {"medium", "hard"} if passed_medium else {"medium"}
+def _tier_reason(dsa_records: list[dict[str, Any]]) -> tuple[str, str]:
+    """Tier frontier from the LAST session's score — the score drives the step.
 
-    candidates = [e for e in pool if e["difficulty"] in allowed]
-    if not candidates:
-        candidates = [e for e in pool if e["difficulty"] == "medium"] or pool
-    fresh = [e for e in candidates if e["title"] not in served_titles]  # rule 7: no-repeat
-    candidates = fresh or candidates
-
-    # rule 4: seeded pick — deterministic within a session, varied across sessions
-    seed = "|".join(
+    pass (≥ 80) → one tier up · < 50 → one tier down · else hold. The tier of the
+    last session comes from its bank id; unparseable/legacy records anchor medium.
+    """
+    last = dsa_records[0]
+    last_score = _f(last.get("score", 0.0))
+    last_qid = next(
         (
-            datetime.now().date().isoformat(),
-            str(len(dsa_records)),
-            ",".join(e["title"] for e in candidates),
-        )
+            _qid_of(str(q.get("question", "")))
+            for q in last.get("questions") or []
+            if _qid_of(str(q.get("question", ""))) is not None
+        ),
+        None,
     )
-    return random.Random(seed).choice(candidates)
+    last_tier = tier_of(last_qid) if last_qid is not None else "medium"
+    if last_score >= DSA_PASS_THRESHOLD:
+        tier = tier_step(last_tier, +1)
+        return (
+            tier,
+            f"You scored {last_score:.0f}/100 on your last {last_tier} question — "
+            f"stepping up to {tier}.",
+        )
+    if last_score < 50:
+        tier = tier_step(last_tier, -1)
+        return (
+            tier,
+            f"Last one landed at {last_score:.0f}/100 — easing back to {tier} to rebuild.",
+        )
+    return (
+        last_tier,
+        f"Holding at {last_tier} — last score {last_score:.0f}/100 sits in the practice band.",
+    )
+
+
+def _select_question(weak_areas: list[str], history: list[dict[str, Any]]) -> Selection | None:
+    """Deterministic, reasoning-based selection over the bank (Change-2).
+
+    Returns None only when nothing servable remains (all solved, or all solved-
+    except-partials whose entries vanished) — the node then ends the session
+    honestly. Every returned pick carries its WHY narration.
+    """
+    latest = _latest_question_state(history)
+    solved = {qid for qid, info in latest.items() if info["termination"] == "pass"}
+    partial = {qid: info for qid, info in latest.items() if info["termination"] != "pass"}
+
+    # 1) partial follow-up first — the half-solved promise (oldest attempt rotates in)
+    if partial:
+        qid = min(partial, key=lambda q: (partial[q]["date"], q))
+        entry = bank_entry(qid)
+        if entry is not None:
+            info = partial[qid]
+            return Selection(entry=entry, note=_partial_note(info["verdict"], info["score"]))
+
+    unsolved = [e for e in load_bank() if e["id"] not in solved]
+    if not unsolved:
+        return None  # bank exhausted — the node ends the session honestly
+
+    dsa_records = _dsa_history(history)
+    if not dsa_records:
+        tier, base_reason = "easy", "You're new here — we start easy and climb from your results."
+    else:
+        tier, base_reason = _tier_reason(dsa_records)
+
+    # 2) topic reasoning — weak pool first, then recency filter, then coverage
+    pool = _topic_pool(weak_areas)
+    recent2 = {str(r.get("topic", "")) for r in dsa_records[:2]}
+    filtered = [topic for topic in pool if topic not in recent2]
+    if filtered:
+        pool = filtered  # emptied pool → keep and rank by coverage below
+
+    coverage: dict[str, int] = {}
+    served_topics: list[str] = []
+    for record in dsa_records:
+        topic = str(record.get("topic", ""))
+        served_topics.append(topic)
+        coverage[topic] = coverage.get(topic, 0) + 1
+
+    def _topic_rank(topic: str) -> tuple[int, int, str]:
+        # least-covered first: "you've covered this topic, so a different topic now"
+        return (coverage.get(topic, 0), served_topics.index(topic) if topic in served_topics else 10_000, topic)
+
+    ranked = sorted(set(pool), key=_topic_rank)
+
+    # 3) difficulty frontier: lowest unsolved id in the chosen tier, then in any tier
+    for candidates in (
+        lambda topic: [e for e in unsolved if e["topic"] == topic and e["difficulty"] == tier],
+        lambda topic: [e for e in unsolved if e["topic"] == topic],
+    ):
+        for topic in ranked:
+            hits = sorted(candidates(topic), key=lambda e: e["id"])
+            if hits:
+                return Selection(entry=hits[0], reason=_compose_reason(base_reason, topic, weak_areas))
+
+    # 4) last resort: any unsolved question, least-covered topic, lowest id first
+    fallback = sorted(unsolved, key=lambda e: (coverage.get(e["topic"], 0), e["id"]))
+    if fallback:
+        return Selection(entry=fallback[0], reason=_compose_reason(base_reason, fallback[0]["topic"], weak_areas))
+    return None
 
 
 def selector(state: DsaState) -> dict[str, Any]:
-    """Serve ONE catalog problem and ask for the algorithm (phase=select, session start)."""
-    card = read_report_card()
-    entry = _select_entry(state.weak_areas, card.recent_history or [])
-    prompt = DSA_SELECTOR_V1.format(
-        title=entry["title"],
-        difficulty=entry["difficulty"],
-        statement_brief=entry["statement_brief"],
-    )
-    draft = call_structured("dsa_selector", ProblemSpec, prompt)
-    statement = (
-        draft.statement
-        if draft is not None and draft.statement.strip()
-        # deterministic fallback: the brief plus a completeness reminder — session continues
-        else (
-            f"{entry['statement_brief'].capitalize()}. Solve it for the general case and "
-            "state any assumptions you need."
-        )
-    )
+    """Serve ONE bank question — deterministic pick, reasoning announced (Change-2).
+
+    No LLM call: the bank statement is verbatim. The student sees only
+    "Question {id}" (owner rule — numbers only); title/topic/difficulty stay in
+    the ProblemSpec for the evaluator. A partial follow-up prepends the one-line
+    note; a fresh pick gets its WHY line.
+    """
+    history = read_history()  # FULL history — solved/partial tracking survives N sessions
+    selection = _select_question(state.weak_areas, history)
+    if selection is None:
+        logger.info("[selector] bank exhausted — ending the session honestly")
+        return {
+            "phase": "done",
+            "assistant_message": (
+                "Extraordinary — you've now passed every question in the 100-question bank, "
+                "and nothing half-solved is waiting either. Your DSA history stays intact; "
+                "ask for your progress any time."
+            ),
+        }
+    entry = selection.entry
     problem = ProblemSpec(
+        qid=entry["id"],
         title=entry["title"],
         topic=entry["topic"],
-        difficulty=entry["difficulty"],  # catalog values — Literal-valid by construction
-        statement=statement,
+        difficulty=entry["difficulty"],  # tier is locked to the id — Literal-valid
+        statement=entry["statement"],  # bank-verbatim — never LLM-phrased (Change-2)
         statement_brief=entry["statement_brief"],
-        # catalog-copied ground truth — MUST never come from the LLM (behavior-dsa §2.1)
+        # bank-copied ground truth — MUST never come from the LLM (behavior-dsa §2.1)
         optimized_approach=entry["optimized_approach"],
         edge_cases=[case.strip() for case in entry["edge_cases"].split(";") if case.strip()],
     )
+    lines: list[str] = [_OPENING_CONTRACT, "", f"Question {entry['id']}"]
+    if selection.note:
+        lines.append(selection.note)  # the one-line note from the half-solved record
+    lines.append(problem.statement)
+    if selection.reason:
+        lines.extend(["", f"Why this one: {selection.reason}"])
+    lines.extend(["", _FIXED_ASK])
     logger.info(
-        "[selector] chose %s (%s) — weak_areas=%s",
+        "[selector] chose Q%d %s (%s) — weak_areas=%s",
+        entry["id"],
         entry["title"],
         entry["difficulty"],
         state.weak_areas,
@@ -228,10 +408,7 @@ def selector(state: DsaState) -> dict[str, Any]:
         # Unconditional: selector only ever runs at a session start, and a stale
         # started_at (defense-in-depth re-entry path) would corrupt duration_min.
         "started_at": datetime.now().isoformat(),
-        "assistant_message": (
-            f"{_OPENING_CONTRACT}\n\nProblem: {problem.title} ({problem.difficulty})\n"
-            f"{problem.statement}\n\n{_FIXED_ASK}"
-        ),
+        "assistant_message": "\n".join(lines),
     }
 
 
@@ -321,11 +498,11 @@ def route_after_attempt(state: DsaState) -> str:
 
 
 def _mint_record_id(field: str) -> str:
-    """``{date}-{field}-{seq}`` — seq = per-day per-field counter from the history of
-    record (tool-registry.md). recent_history caps at 10/day per field — fine at
-    single-user volume (documented ceiling)."""
+    """``{date}-{field}-{seq}`` — seq = per-day per-field counter from the FULL history
+    of record (tool-registry.md; read_history retains everything, so the counter is
+    exact rather than capped by recent_history's window)."""
     today = datetime.now().date().isoformat()
-    recent = read_report_card().recent_history or []
+    recent = read_history()
     seq = 1 + sum(
         1
         for r in recent
@@ -395,15 +572,22 @@ def dsa_wrap(state: DsaState) -> dict[str, Any]:
         )
     message = (
         f"{reveal}\nOne session recorded — your DSA trend updates from this. "
-        "Next time I pick again from your weak areas and topics we haven't served recently. "
-        "Type anything to continue."
+        + (
+            "This one's marked solved — I won't ask it again."
+            if termination == "pass"
+            else "I'm keeping a note of where you stopped — we'll pick this one back up next time."
+        )
+        + " Type anything to continue."
     )
 
     questions = []
     if problem is not None:
+        # Change-2: the Q{id} line IS the tracking key — future selections parse it
+        # from history to keep solved questions out (and partials owed a follow-up).
+        identifier = f"Q{problem.qid} ({problem.difficulty})" if problem.qid else problem.title
         questions.append(
             QuestionRecord(
-                question=f"{problem.title} ({problem.difficulty}) — {problem.statement_brief}",
+                question=f"{identifier} — {problem.statement_brief}",
                 verdict=verdict_line,
                 score=state.final_score,
             ).model_dump()

@@ -11,7 +11,7 @@ import pytest
 
 from prep_agent.config import RECURSION_LIMIT
 from prep_agent.graph import build_graph, make_sqlite_checkpointer
-from prep_agent.subgraphs.dsa import _select_entry
+from prep_agent.subgraphs.dsa import _select_question
 from prep_agent.tools.report_card import read_report_card
 
 ONBOARDING_ANSWERS: tuple[str, ...] = (
@@ -68,16 +68,7 @@ def test_dsa_pass_path_e2e(llm_queues, tmp_path):
     config = {"configurable": {"thread_id": "dsa-pass"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
     llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
-    llm_queues["dsa_selector"] = [
-        {
-            "statement": "Pick pairs summing to a target.",
-            "title": "x",
-            "topic": "arrays",
-            "difficulty": "easy",
-            "optimized_approach": "x",
-            "edge_cases": [],
-        }
-    ]
+    # Change-2: the selector makes NO LLM call — the bank serves the question
     llm_queues["dsa_evaluator"] = [_verdict(62), _verdict(85)]
     for message in ("let's do a dsa problem", "scan all pairs", "one-pass hashmap of complements"):
         result = app.invoke({"user_message": message}, config=config)
@@ -87,7 +78,9 @@ def test_dsa_pass_path_e2e(llm_queues, tmp_path):
     record = records[0]
     assert record["score"] == 85.0
     assert str(record["questions"][0]["verdict"]).startswith("pass: ")
-    assert record["topic"] == _select_entry(["arrays", "greedy"], []).get("topic")  # catalog topic
+    assert record["questions"][0]["question"].startswith("Q")  # Q{id} tracking line
+    expected = _select_question(["arrays", "greedy"], [])
+    assert record["topic"] == expected.entry["topic"]  # bank topic of the served question
 
 
 @pytest.mark.e2e
@@ -96,16 +89,6 @@ def test_dsa_give_up_path_e2e(llm_queues, tmp_path):
     config = {"configurable": {"thread_id": "dsa-giveup"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
     llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
-    llm_queues["dsa_selector"] = [
-        {
-            "statement": "Statement.",
-            "title": "x",
-            "topic": "arrays",
-            "difficulty": "easy",
-            "optimized_approach": "x",
-            "edge_cases": [],
-        }
-    ]
     llm_queues["dsa_evaluator"] = [_verdict(40)]
     for message in ("let's do a dsa problem", "brute force everything", "I give up"):
         result = app.invoke({"user_message": message}, config=config)
@@ -122,16 +105,6 @@ def test_dsa_max_attempts_path_e2e(llm_queues, tmp_path):
     config = {"configurable": {"thread_id": "dsa-max"}, "recursion_limit": RECURSION_LIMIT}
     _onboard(app, config, llm_queues)
     llm_queues["router_classify"] = [{"intent": "dsa", "confidence": 0.95}]  # Phase 3.1
-    llm_queues["dsa_selector"] = [
-        {
-            "statement": "Statement.",
-            "title": "x",
-            "topic": "arrays",
-            "difficulty": "easy",
-            "optimized_approach": "x",
-            "edge_cases": [],
-        }
-    ]
     llm_queues["dsa_evaluator"] = [_verdict(55), _verdict(60), _verdict(65)]
     for message in ("let's do a dsa problem", "attempt one", "attempt two", "attempt three"):
         result = app.invoke({"user_message": message}, config=config)

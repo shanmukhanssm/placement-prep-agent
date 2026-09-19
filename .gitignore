@@ -1,6 +1,7 @@
-# secrets & runtime data
+# secrets & runtime data (/data/ is ROOT-anchored — the package bank at
+# src/prep_agent/data/ is versioned source, not runtime data)
 .env
-data/
+/data/
 *.sqlite
 *.sqlite3
 REPORT_CARD.html

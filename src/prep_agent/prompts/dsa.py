@@ -169,26 +169,10 @@ DSA_FAULT_TAXONOMY: frozenset[str] = frozenset(
     }
 )
 
-# prompt-registry delta (same commit): selection is DETERMINISTIC in code
-# (behavior-dsa §2.2); the selector LLM's job is statement phrasing only — the node
-# composes the "Problem: title (difficulty)" line, the fixed ask, and the session
-# opening contract. Catalog fields never pass through the LLM.
-DSA_SELECTOR_V1 = """Write the self-contained problem statement for the ONE DSA problem already chosen.
-
-Chosen entry: title={title} · difficulty={difficulty} (the node declares both)
-Statement brief: {statement_brief}
-
-Rules for the statement:
-- Fully self-contained: every constraint (array sizes, value ranges, what to return
-  when no answer exists) lives in the statement text — solvable from the statement
-  alone, no missing constraints.
-- Expand from the brief; vary surface details (names, arrays, numbers) freely;
-  solvability must not change.
-- 2-5 sentences, plain text, no markdown, no hints toward any technique.
-- Never mention: the topic tag, the technique family, that it is a famous interview
-  question, or anything hinting at the reference approach.
-
-Return ONLY the structured output."""
+# prompt-registry delta (Change-2, same commit): DSA_SELECTOR_V1 is RETIRED —
+# the 100-question bank (tools/dsa_bank.py) ships verbatim statements, so the
+# selector makes no LLM call at all; problem substance never passes through an
+# LLM at selection time. The registry records the retirement.
 
 # prompt-registry delta (same commit): AttemptVerdict gains is_attempt + mechanism;
 # `pass` is derived in code (optimality_pct >= 80 ONLY); faults validated against the

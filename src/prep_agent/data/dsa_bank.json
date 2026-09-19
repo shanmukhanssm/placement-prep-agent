@@ -1,0 +1,1002 @@
+[
+  {
+    "id": 1,
+    "title": "Zero Shift Rear",
+    "topic": "arrays",
+    "difficulty": "easy",
+    "statement": "Given an integer array nums, move every 0 to the end of the array while keeping the relative left-to-right order of all non-zero values unchanged. The array length must stay the same, and performing the rearrangement directly on the input array rather than building a fresh one is preferred. 1 <= nums.length <= 10^4 and -10^9 <= nums[i] <= 10^9. Example: Input: nums = [0, 4, 0, 7, 3, 0] Output: [4, 7, 3, 0, 0, 0] Explanation: The three zeros are pushed to the tail while 4, 7 and 3 keep their original order.",
+    "statement_brief": "push all zeros to the tail while keeping non-zero order",
+    "optimized_approach": "single-pass write-pointer compaction then tail fill of zeros, O(n)/O(1)",
+    "edge_cases": "array of all zeros; single-element array; interleaved zeros must not disturb non-zero order"
+  },
+  {
+    "id": 2,
+    "title": "Staircase Hop Count",
+    "topic": "dp-basics",
+    "difficulty": "easy",
+    "statement": "You are climbing a staircase with n steps. Each move takes you up either 1 or 2 steps, and you may mix the two freely. Count how many distinct sequences of moves bring you exactly to step n, the top. 1 <= n <= 45, and the answer always fits in a 32-bit signed integer. Example: Input: n = 4 Output: 5 Explanation: The five ways are 1+1+1+1, 1+1+2, 1+2+1, 2+1+1 and 2+2.",
+    "statement_brief": "count distinct 1-or-2 step move sequences reaching step n",
+    "optimized_approach": "bottom-up recurrence ways[i] = ways[i-1] + ways[i-2], O(n)/O(1)",
+    "edge_cases": "n = 1 returns 1; n = 2 returns 2; n near 45 stays within 32-bit range"
+  },
+  {
+    "id": 3,
+    "title": "Anagram Pair Check",
+    "topic": "strings",
+    "difficulty": "easy",
+    "statement": "Two lowercase words a and b are given. Decide whether the second word is a rearrangement of the first, meaning both words use exactly the same letters with exactly the same multiplicities, with order irrelevant. Each word holds between 1 and 50000 letters. Example: Input: a = \"listen\", b = \"silent\" Output: true Explanation: Both words contain the letters e, i, l, n, s and t exactly once each, so one can be rearranged into the other.",
+    "statement_brief": "decide whether two words use identical letters with identical counts",
+    "optimized_approach": "letter frequency tally of both words compared directly, O(n)/O(1)",
+    "edge_cases": "unequal lengths fail immediately; same letters with different counts must fail; identical words count as true"
+  },
+  {
+    "id": 4,
+    "title": "Island Land Count",
+    "topic": "graphs-basics",
+    "difficulty": "easy",
+    "statement": "You are given a rectangular grid of characters where '1' marks land and '0' marks water. Land cells connect only horizontally or vertically, never diagonally. A patch is a maximal group of '1' cells linked to one another through such connections. Count how many separate patches the grid contains. 1 <= rows, cols <= 300. Example: Input: grid = [[\"1\",\"1\",\"0\"],[\"1\",\"0\",\"0\"],[\"0\",\"0\",\"1\"]] Output: 2 Explanation: The three land cells in the top-left corner form one patch, and the lone cell at the bottom-right forms a second one.",
+    "statement_brief": "count separate land patches in a water-and-land grid",
+    "optimized_approach": "flood fill from each unvisited land cell, count fill starts, O(rows*cols)/O(rows*cols)",
+    "edge_cases": "all-water grid returns 0; all-land grid returns 1; diagonal cells are not connected"
+  },
+  {
+    "id": 5,
+    "title": "Pair Sum Lookup",
+    "topic": "hashmaps",
+    "difficulty": "easy",
+    "statement": "Given an integer array nums and an integer target, return the indices of the two distinct positions whose values add up to target. Exactly one valid answer exists, the same position may not be used twice, and the two indices must be returned in ascending order. 2 <= nums.length <= 10^4, -10^9 <= nums[i] <= 10^9, -10^9 <= target <= 10^9. Example: Input: nums = [7, 2, 11, 5], target = 9 Output: [0, 1] Explanation: nums[0] + nums[1] = 7 + 2 = 9, and no other pair of positions reaches the target.",
+    "statement_brief": "find indices of two numbers adding to a target",
+    "optimized_approach": "one-pass map storing seen value to index for complement lookup, O(n)/O(n)",
+    "edge_cases": "duplicate values forming the valid pair; negative numbers and targets; output indices in ascending order"
+  },
+  {
+    "id": 6,
+    "title": "Tree Depth Gauge",
+    "topic": "trees",
+    "difficulty": "easy",
+    "statement": "A binary tree is handed to you through its root node. Each node stores one integer and may hold a left child, a right child, both, or neither. The depth of the tree is the largest number of nodes found on any single route from the root down to a leaf, counting both endpoints. The tree contains between 0 and 10000 nodes. Example: Input: root = [3, 9, 20, null, null, 15, 7] Output: 3 Explanation: The longest root-to-leaf route is 3, then 20, then 7, passing through three nodes.",
+    "statement_brief": "largest node count along any root-to-leaf path",
+    "optimized_approach": "recursive depth-first max over child depths, O(n)/O(h)",
+    "edge_cases": "empty tree has depth 0; single node has depth 1; fully skewed chain equals node count"
+  },
+  {
+    "id": 7,
+    "title": "List Middle Finder",
+    "topic": "linked-list",
+    "difficulty": "easy",
+    "statement": "You are given the head of a singly linked list in which every node stores an integer and points to the next node. Return the middle node of the list; when the length is even, return the second of the two middle nodes. The list contains between 1 and 10000 nodes. Example: Input: head = [1, 2, 3, 4, 5, 6] Output: [4, 5, 6] Explanation: Six nodes exist, so the second middle is the node holding 4, and the chain starting at that node is the answer.",
+    "statement_brief": "return the middle node, second middle when length is even",
+    "optimized_approach": "fast and slow pointers with the fast one stepping twice, O(n)/O(1)",
+    "edge_cases": "single-node list returns itself; two-node list returns the second node; even length picks the later middle"
+  },
+  {
+    "id": 8,
+    "title": "Vowel Rich Stretch",
+    "topic": "sliding-window",
+    "difficulty": "easy",
+    "statement": "A lowercase string s and an integer k are given. Among all substrings made of exactly k consecutive letters, find the greatest number of vowels any single substring contains. The vowels are a, e, i, o and u; the letter y never counts as one. 1 <= k <= s.length <= 100000. Example: Input: s = \"keywordmagic\", k = 4 Output: 2 Explanation: The substrings \"eywo\" and \"magic\" each contain two vowels, and no k-length substring contains more.",
+    "statement_brief": "most vowels inside any k-letter consecutive stretch",
+    "optimized_approach": "vowel count updated letter-by-letter as the k-stretch slides, O(n)/O(1)",
+    "edge_cases": "string with no vowels returns 0; k equals full length; letter y is not counted as a vowel"
+  },
+  {
+    "id": 9,
+    "title": "Bracket Nest Check",
+    "topic": "stack",
+    "difficulty": "easy",
+    "statement": "A code fragment consists only of the characters '(', ')', '{', '}', '[' and ']'. The fragment is well formed when every opening bracket is closed by the same kind of bracket in the correct order, and every closing bracket has a matching opener earlier in the string. Given a string s of length between 1 and 10000, decide whether it is well formed. Example: Input: s = \"{[()]}()\" Output: true Explanation: The curly, square and round pairs nest properly, and the final round pair closes in order.",
+    "statement_brief": "verify every bracket closes with the right kind in order",
+    "optimized_approach": "push openers, match closers against the most recent opener, O(n)/O(n)",
+    "edge_cases": "leading closing bracket; lone unclosed opener; interleaved kinds like ([)] must fail"
+  },
+  {
+    "id": 10,
+    "title": "Merge Sorted Runs",
+    "topic": "two-pointers",
+    "difficulty": "easy",
+    "statement": "Two integer arrays a and b arrive each already arranged in non-decreasing order. Combine every element of both, duplicates included, into one array that is also in non-decreasing order and return it; either input may be empty. 0 <= a.length, b.length <= 30000 and -10^9 <= every value <= 10^9. Example: Input: a = [1, 3, 7], b = [2, 2, 8] Output: [1, 2, 2, 3, 7, 8] Explanation: The six values line up smallest to largest, keeping both copies of 2.",
+    "statement_brief": "combine two sorted arrays into one sorted array",
+    "optimized_approach": "advance two front indexes emitting the smaller head each step, O(n+m)/O(n+m)",
+    "edge_cases": "one input array empty; duplicate values across arrays all survive; very different array lengths"
+  },
+  {
+    "id": 11,
+    "title": "Kth Missing Number",
+    "topic": "sorting-searching",
+    "difficulty": "easy",
+    "statement": "A strictly increasing array of positive integers is given, along with an integer k. Some positive integers are absent from the array. Report the k-th missing positive integer when counting upward from 1. 1 <= arr.length <= 1000, 1 <= arr[i] <= 1000, 1 <= k <= 1000, and the answer is guaranteed to exist. Example: Input: arr = [2, 3, 4, 9, 12], k = 3 Output: 7 Explanation: The missing positives run 1, 5, 6, 7, 8, 10, 11 and onward; the third one is 7.",
+    "statement_brief": "report the k-th absent positive integer in sorted order",
+    "optimized_approach": "halved search on how many positives are missing before each index, O(log n)/O(1)",
+    "edge_cases": "missing values before the first element; k reaches past the last array value; strictly increasing input means no duplicates"
+  },
+  {
+    "id": 12,
+    "title": "Cookie Treat Match",
+    "topic": "greedy",
+    "difficulty": "easy",
+    "statement": "Every child in a group has a greed factor, and a child becomes satisfied only by receiving a cookie whose size is at least that greed factor. You are given the array g of greed factors and the array c of cookie sizes. Each child may take at most one cookie and each cookie may feed at most one child. Return the largest number of children that can end up satisfied. 1 <= g.length, c.length <= 30000 and 1 <= g[i], c[j] <= 2147483647. Example: Input: g = [1, 2, 3], c = [1, 1] Output: 1 Explanation: Only two cookies exist and both have size 1, so just the child with greed 1 can be satisfied; the children wanting 2 or 3 get nothing.",
+    "statement_brief": "maximum children fed given greed factors and cookie sizes",
+    "optimized_approach": "sort both lists, hand the smallest adequate cookie to the smallest greed, O(n log n)/O(1)",
+    "edge_cases": "more children than cookies; cookie exactly equal to greed satisfies; greed values up to 2147483647"
+  },
+  {
+    "id": 13,
+    "title": "Lone Number Hunt",
+    "topic": "bit-manipulation",
+    "difficulty": "easy",
+    "statement": "In a given integer array every value appears exactly twice except for one value that appears exactly once. Return that unpaired value. 1 <= nums.length <= 30000, -30000 <= nums[i] <= 30000, and the length is always odd. Your answer should use only a constant amount of extra storage and a single linear sweep. Example: Input: nums = [8, 3, 8, 5, 3] Output: 5 Explanation: Both 8 and both 3 show up twice, so only 5 lacks a partner.",
+    "statement_brief": "find the value appearing once while all others appear twice",
+    "optimized_approach": "XOR fold over all elements cancels every pair, O(n)/O(1)",
+    "edge_cases": "single-element array returns it; negative values pair identically; array length is always odd"
+  },
+  {
+    "id": 14,
+    "title": "Factorial Zero Count",
+    "topic": "math",
+    "difficulty": "easy",
+    "statement": "Given a non-negative integer n, imagine writing n factorial out in decimal and count how many trailing zeros its representation ends with. The count climbs quickly with n because every way of forming a factor of ten adds one more final zero. 0 <= n <= 10000. For the larger inputs the factorial itself is far too big to store, so the answer must come from the structure of the multiplication rather than from computing it. Example: Input: n = 10 Output: 2 Explanation: 10! = 3628800, which ends in exactly two zeros.",
+    "statement_brief": "count trailing zeros in the decimal form of n factorial",
+    "optimized_approach": "sum floor(n/5^k) over powers of five, O(log n)/O(1)",
+    "edge_cases": "n = 0 gives 0! = 1 with zero trailing zeros; n below 5 returns 0; powers of five bump the count"
+  },
+  {
+    "id": 15,
+    "title": "Runner-Up Value Scan",
+    "topic": "arrays",
+    "difficulty": "easy",
+    "statement": "Given an integer array nums, return the second largest distinct value, that is, the largest value strictly smaller than the maximum. If no such value exists because every element equals the maximum or the array holds fewer than two distinct values, return -1. 1 <= nums.length <= 100000 and -10^9 <= nums[i] <= 10^9. Example: Input: nums = [4, 9, 9, 2, 7] Output: 7 Explanation: The maximum is 9; among the remaining values 4, 2 and 7 the largest strictly smaller one is 7.",
+    "statement_brief": "largest value strictly below the maximum, or -1 if none",
+    "optimized_approach": "one scan tracking best and distinct runner-up values, O(n)/O(1)",
+    "edge_cases": "single-element array returns -1; every element equal returns -1; repeated maximums must not become the runner-up"
+  },
+  {
+    "id": 16,
+    "title": "Grid Path Counter",
+    "topic": "dp-basics",
+    "difficulty": "easy",
+    "statement": "A robot stands on the top-left cell of a grid with m rows and n columns. At every step it moves either one cell right or one cell down, and it wants to finish on the bottom-right cell. How many different routes can it take? 1 <= m, n <= 15, and every answer fits in a 32-bit signed integer. Example: Input: m = 3, n = 3 Output: 6 Explanation: Any route uses exactly two rights and two downs, and those four moves can be ordered in six distinct ways.",
+    "statement_brief": "count right/down move routes from top-left to bottom-right",
+    "optimized_approach": "row-by-row recurrence adding counts from the cell above and left, O(m*n)/O(n)",
+    "edge_cases": "single row or column has one route; 1 x 1 grid has one route; tall and wide grids behave symmetrically"
+  },
+  {
+    "id": 17,
+    "title": "First Solo Letter",
+    "topic": "strings",
+    "difficulty": "easy",
+    "statement": "Given a lowercase string s, find the first character that occurs exactly once in the entire string and return its index. If every character repeats, return -1. 1 <= s.length <= 100000. Example: Input: s = \"pepper\" Output: 5 Explanation: The letter p occurs three times and e occurs twice, while the final r is the only character appearing exactly once, and it sits at index 5.",
+    "statement_brief": "index of the first character occurring exactly once, else -1",
+    "optimized_approach": "two passes: tally letter counts then scan for the first count of one, O(n)/O(1)",
+    "edge_cases": "single-character string returns 0; every character repeats returns -1; earlier unique beats later ones"
+  },
+  {
+    "id": 18,
+    "title": "Town Route Check",
+    "topic": "graphs-basics",
+    "difficulty": "easy",
+    "statement": "A country has n towns labelled 0 to n - 1, connected by two-way roads given as pairs of distinct towns. Determine whether it is possible to travel from a source town to a destination town, possibly passing through intermediate towns. 1 <= n <= 20000 and 0 <= roads.length <= 50000. Example: Input: n = 5, roads = [[0, 1], [1, 3], [2, 4]], source = 0, destination = 3 Output: true Explanation: Town 0 reaches town 1 directly, and town 1 reaches town 3 directly, so the trip succeeds.",
+    "statement_brief": "can you travel from source town to destination town by roads",
+    "optimized_approach": "traversal from the source marking reachable towns, O(n + roads)/O(n)",
+    "edge_cases": "source equals destination returns true; no roads at all; separate town groups never connect"
+  },
+  {
+    "id": 19,
+    "title": "Nearby Duplicate Scan",
+    "topic": "hashmaps",
+    "difficulty": "easy",
+    "statement": "Given an integer array nums and an integer k, decide whether the array holds two copies of the same value at positions no more than k apart, meaning indices i and j with nums[i] equal to nums[j] and absolute difference |i - j| at most k. 1 <= nums.length <= 100000, -10^9 <= nums[i] <= 10^9 and 0 <= k <= 100000. Example: Input: nums = [5, 9, 5, 2], k = 1 Output: false Explanation: The two copies of 5 sit at indices 0 and 2, which are 2 apart, exceeding the allowed distance of 1.",
+    "statement_brief": "same value twice with positions within distance k or less",
+    "optimized_approach": "remember each value's most recent index and compare gaps, O(n)/O(min(n, k))",
+    "edge_cases": "k = 0 forbids any match; same value many times needs the closest pair; huge value range blocks counting arrays"
+  },
+  {
+    "id": 20,
+    "title": "Twin Tree Check",
+    "topic": "trees",
+    "difficulty": "easy",
+    "statement": "Two binary trees are given through their root nodes, and every node stores an integer along with optional left and right children. Decide whether the trees are exactly alike: the same shape and the same value in every corresponding position. Each tree holds between 0 and 10000 nodes. Example: Input: tree1 = [1, 2, 3], tree2 = [1, 2, 3] Output: true Explanation: Both trees have root 1 with left child 2 and right child 3, matching node for node.",
+    "statement_brief": "are two trees identical in shape and every node value",
+    "optimized_approach": "parallel depth-first walk comparing both nodes at once, O(n)/O(h)",
+    "edge_cases": "both trees empty is true; one empty is false; equal values with swapped children fail"
+  },
+  {
+    "id": 21,
+    "title": "Cycle Hideout Check",
+    "topic": "linked-list",
+    "difficulty": "easy",
+    "statement": "A singly linked list is given by its head node. Every node points to the next one, except that one node's next pointer may jump back to some earlier node instead of ending at null. Decide whether such a jump-back exists, that is, whether walking next pointers from the head can loop forever. The list contains up to 10000 nodes. Example: Input: head = [3, 2, 0, -4] where the -4 node points back to the node holding 2 Output: true Explanation: Walking from the head revisits the node with value 2 endlessly, so the chain loops.",
+    "statement_brief": "does following next pointers loop forever instead of ending",
+    "optimized_approach": "slow and fast pointers racing through the nodes, O(n)/O(1)",
+    "edge_cases": "single node pointing to itself; cycle may start at the head; clean null-terminated list is false"
+  },
+  {
+    "id": 22,
+    "title": "Window Sum Tally",
+    "topic": "sliding-window",
+    "difficulty": "easy",
+    "statement": "For an integer array arr, an integer k and an integer threshold, count the stretches of exactly k consecutive entries whose average is strictly greater than threshold. 1 <= k <= arr.length <= 100000 and 1 <= arr[i], threshold <= 10000. Example: Input: arr = [2, 2, 2, 2, 5, 5, 5, 8], k = 3, threshold = 3 Output: 3 Explanation: The stretches 2, 5, 5 and 5, 5, 5 and 5, 5, 8 have averages 4, 5 and 6, all above 3, while no other three-entry stretch qualifies.",
+    "statement_brief": "count k-entry stretches whose average beats a threshold",
+    "optimized_approach": "running k-length sum shifted one slot per step, O(n)/O(1)",
+    "edge_cases": "average exactly equal to threshold does not count; k equals full length gives one stretch; keep stretch sums inside integer range"
+  },
+  {
+    "id": 23,
+    "title": "Backspace Text Match",
+    "topic": "stack",
+    "difficulty": "easy",
+    "statement": "While typing, the character '#' acts as a backspace: it erases the most recent character still on the page, and typing it onto an empty page does nothing. Two strings s and t, each of length 1 to 200 and built from lowercase letters and '#', record two typing sessions. Decide whether the final page contents are identical. Example: Input: s = \"ab#c\", t = \"ad#c\" Output: true Explanation: In both sessions the '#' erases the letter just before it, leaving \"ac\" on the page each time.",
+    "statement_brief": "do two backspaced typing sessions end with equal text",
+    "optimized_approach": "rebuild each text erasing on '#', then compare results, O(n)/O(n)",
+    "edge_cases": "backspace on empty page does nothing; leading '#' characters; only '#' inputs reduce to empty"
+  },
+  {
+    "id": 24,
+    "title": "Sorted Square Build",
+    "topic": "two-pointers",
+    "difficulty": "easy",
+    "statement": "An array nums is given already sorted in non-decreasing order and may contain negative values. Build a new array that holds the square of every element, arranged again in non-decreasing order, and return it. The input holds between 1 and 10000 values, each between -10000 and 10000. Example: Input: nums = [-6, -2, 0, 3, 10] Output: [0, 4, 9, 36, 100] Explanation: Squaring each value gives [36, 4, 0, 9, 100], and putting those in order yields the answer.",
+    "statement_brief": "squares of a sorted array re-arranged into non-decreasing order",
+    "optimized_approach": "fill the result from both ends inward by larger absolute value, O(n)/O(n)",
+    "edge_cases": "single-element input; entirely negative values; squared values reach 10^8 but still fit 32-bit"
+  },
+  {
+    "id": 25,
+    "title": "Faulty Build Finder",
+    "topic": "sorting-searching",
+    "difficulty": "easy",
+    "statement": "A software product is rebuilt every night, and from some night onward every build fails its quality check. Builds carry version numbers 1 to n in chronological order; versions before the first bad one pass, and every version from the first bad one onward fails. You are given n, and a checker isBad(version) reports whether a given version is bad. Locate the first bad version while calling the checker as few times as possible. 1 <= firstBad <= n <= 2147483647. Example: Input: n = 12, firstBad = 8 Output: 8 Explanation: isBad(7) returns false while isBad(8) returns true, so build 8 is the first failing one.",
+    "statement_brief": "locate the first failing build with fewest checker calls",
+    "optimized_approach": "halve the version interval on each checker answer, O(log n)/O(1)",
+    "edge_cases": "first bad build is version 1; first bad build is version n; midpoint math must not overflow near 2^31"
+  },
+  {
+    "id": 26,
+    "title": "Stock Profit Peak",
+    "topic": "greedy",
+    "difficulty": "easy",
+    "statement": "You observe one stock's price across consecutive days, given as an array prices where prices[i] is the price on day i. You may pick one day to buy and one later day to sell. Return the greatest profit achievable; if no plan ever makes money, return 0. 1 <= prices.length <= 100000 and 0 <= prices[i] <= 10000. Example: Input: prices = [8, 3, 6, 4, 9] Output: 6 Explanation: Buying at 3 on day 2 and selling at 9 on day 5 earns 6, and no other buy-sell pairing does better.",
+    "statement_brief": "best profit from one buy followed by one later sell",
+    "optimized_approach": "track the running cheapest price and best gain per day, O(n)/O(1)",
+    "edge_cases": "strictly falling prices return 0; single day allows no sale; flat prices give zero profit"
+  },
+  {
+    "id": 27,
+    "title": "Digit Root Reduce",
+    "topic": "math",
+    "difficulty": "easy",
+    "statement": "Take a non-negative integer num and repeatedly replace it with the sum of its own digits, continuing until only a single digit remains; that final digit is the reduced value, and the process always finishes because the number shrinks whenever it has more than one digit. Return the reduced value for the given input. 0 <= num <= 2147483647. Example: Input: num = 493 Output: 7 Explanation: 4 + 9 + 3 = 16, then 1 + 6 = 7, and 7 is a single digit, so 7 is the answer.",
+    "statement_brief": "repeatedly sum digits until one single digit remains",
+    "optimized_approach": "digital root identity 1 + (num - 1) mod 9, O(1)/O(1)",
+    "edge_cases": "num = 0 stays 0; multiples of nine reduce to 9; values near 2147483647 still reduce quickly"
+  },
+  {
+    "id": 28,
+    "title": "Balance Split Index",
+    "topic": "arrays",
+    "difficulty": "easy",
+    "statement": "Given a 0-indexed integer array nums, find the leftmost position i where the sum of every entry before i equals the sum of every entry after i; the entry at i itself belongs to neither side. If no such position exists, return -1. 1 <= nums.length <= 100000 and -10000 <= nums[i] <= 10000. Example: Input: nums = [1, 7, 3, 6, 5, 6] Output: 3 Explanation: Left of index 3 the entries 1, 7 and 3 total 11, and right of it the entries 5 and 6 also total 11.",
+    "statement_brief": "leftmost index with equal totals on both sides, else -1",
+    "optimized_approach": "total sum minus running left sum compared at each index, O(n)/O(1)",
+    "edge_cases": "split at index 0 or the last index; negative entries shift sums; several valid spots need the leftmost"
+  },
+  {
+    "id": 29,
+    "title": "Adjacent Loot Total",
+    "topic": "dp-basics",
+    "difficulty": "easy",
+    "statement": "A street of houses stands in a row, and house i stores loot worth nums[i]. An alarm triggers if two neighbouring houses are both robbed, so the chosen houses must never sit side by side. Maximise the total loot collected under this rule and return that total. 1 <= nums.length <= 100 and 0 <= nums[i] <= 400. Example: Input: nums = [3, 1, 5, 8] Output: 11 Explanation: Robbing the houses worth 3 and 8 yields 3 + 8 = 11, which beats every legal alternative such as 3 + 5 = 8 or 1 + 8 = 9.",
+    "statement_brief": "maximum loot picking houses with no two neighbors chosen",
+    "optimized_approach": "include/exclude scan carrying the two best totals, O(n)/O(1)",
+    "edge_cases": "single house takes full loot; two houses take the richer; all-zero loot returns 0"
+  },
+  {
+    "id": 30,
+    "title": "Reverse Word Order",
+    "topic": "strings",
+    "difficulty": "easy",
+    "statement": "A sentence is given as a string of lowercase words separated by single spaces, with no leading or trailing spaces and at least one word present. Reverse the order of the words while keeping the letters inside every word intact, and return the resulting sentence. The string holds up to 10000 characters. Example: Input: s = \"misty mornings chill quickly\" Output: \"quickly chill mornings misty\" Explanation: The four words keep their spellings but appear in the opposite order, so the last word comes first and the first comes last.",
+    "statement_brief": "flip the sequence of words in a space-separated sentence",
+    "optimized_approach": "split on spaces and rejoin back to front, O(n)/O(n)",
+    "edge_cases": "single-word sentence unchanged; spaces are guaranteed single; very long inputs near 10000 characters"
+  },
+  {
+    "id": 31,
+    "title": "Rotate Tail Steps",
+    "topic": "arrays",
+    "difficulty": "medium",
+    "statement": "Given an integer array nums and a non-negative integer k, move every element k positions to the right, with values falling off the end wrapping around to the front; formally, the value at index i ends up at index (i + k) mod n where n is the array length. Perform the change on the array itself rather than building a separate array. 1 <= nums.length <= 100000 and 0 <= k <= 10^9. Example: Input: nums = [1, 2, 3, 4, 5, 6, 7], k = 3 Output: [5, 6, 7, 1, 2, 3, 4] Explanation: Each element advances three places right, and the final three values wrap to the front.",
+    "statement_brief": "shift every array element k spots right with wraparound in place",
+    "optimized_approach": "reverse the whole array, then reverse the two k-split halves, O(n)/O(1)",
+    "edge_cases": "k larger than length wraps via k mod n; k = 0 leaves array as is; single-element array unchanged"
+  },
+  {
+    "id": 32,
+    "title": "Grid Toll Route",
+    "topic": "dp-basics",
+    "difficulty": "medium",
+    "statement": "A courier travels across a grid with m rows and n columns, starting at the top-left cell and finishing at the bottom-right cell. Every cell carries a non-negative toll, and entering a cell costs that toll, including the starting cell. From any cell the courier may step only right or down. Minimise the total toll paid along the way and return that minimum. 1 <= m, n <= 200 and 0 <= toll <= 200. Example: Input: grid = [[1, 3, 1], [1, 5, 1], [4, 2, 1]] Output: 7 Explanation: The route 1 -> 3 -> 1 -> 1 -> 1 along the top row and down the right column pays 7, less than any other path.",
+    "statement_brief": "cheapest right/down path collecting cell tolls across a grid",
+    "optimized_approach": "row-wise cheapest-so-far accumulation over the grid, O(m*n)/O(n)",
+    "edge_cases": "single-cell grid pays its own toll; single row or column forces one route; zero-toll cells are free"
+  },
+  {
+    "id": 33,
+    "title": "Palindrome Span Hunt",
+    "topic": "strings",
+    "difficulty": "medium",
+    "statement": "Given a string s of length 1 to 1000 containing only digits and English letters, find the longest run of consecutive characters that reads identically forwards and backwards. A single character counts as such a run of length one, so an answer always exists. When several runs tie for the longest, return the one that starts earliest. Example: Input: s = \"cabad\" Output: \"aba\" Explanation: The run aba covers characters 1 through 3, and no longer qualifying run exists anywhere in the string.",
+    "statement_brief": "longest consecutive characters reading the same both directions",
+    "optimized_approach": "expand outward from each center keeping the widest span, O(n^2)/O(1)",
+    "edge_cases": "entire string already qualifying; all characters identical; ties go to the earliest start"
+  },
+  {
+    "id": 34,
+    "title": "Course Order Plan",
+    "topic": "graphs-basics",
+    "difficulty": "medium",
+    "statement": "A study program has numCourses courses labelled 0 to numCourses - 1. Some courses list a prerequisite pair [a, b], meaning course b must be finished before course a may start. Return one valid ordering that lets every course be taken exactly once while honouring every prerequisite; if no such ordering exists, return an empty list. 1 <= numCourses <= 2000, 0 <= prerequisites.length <= 5000, and all pairs are distinct. Example: Input: numCourses = 4, prerequisites = [[1, 0], [2, 0], [3, 1]] Output: [0, 1, 2, 3] Explanation: Course 0 needs nothing, courses 1 and 2 wait for 0, and course 3 waits for 1, so this order works.",
+    "statement_brief": "order all courses so every prerequisite comes first",
+    "optimized_approach": "repeatedly peel courses with no pending prerequisites, O(V + E)/O(V + E)",
+    "edge_cases": "no prerequisites allows any order; prerequisite cycle returns empty; many valid orderings all accepted"
+  },
+  {
+    "id": 35,
+    "title": "Sum Segments Count",
+    "topic": "hashmaps",
+    "difficulty": "medium",
+    "statement": "Given an integer array nums and an integer k, count how many consecutive stretches of entries sum to exactly k. Stretches are distinguished by position, so identical values spanning different index ranges count separately. 1 <= nums.length <= 20000, -1000 <= nums[i] <= 1000 and -10^7 <= k <= 10^7. Example: Input: nums = [1, 2, 3, -1, 2], k = 5 Output: 2 Explanation: The stretch from index 1 to 2 gives 2 + 3 = 5, and the stretch from index 0 to 3 gives 1 + 2 + 3 - 1 = 5.",
+    "statement_brief": "count consecutive stretches whose elements total exactly k",
+    "optimized_approach": "prefix totals with a running count of earlier matching totals, O(n)/O(n)",
+    "edge_cases": "negative entries break sorted-prefix shortcuts; k = 0 needs zero-sum stretches; identical stretches at different spots count separately"
+  },
+  {
+    "id": 36,
+    "title": "BST Rule Check",
+    "topic": "trees",
+    "difficulty": "medium",
+    "statement": "A binary tree is given by its root, where each node stores an integer and up to two children. Decide whether the tree obeys the search-tree ordering: for every node, every value in its left subtree must be strictly less than the node's value, and every value in its right subtree must be strictly greater. This must hold at every node, not just between immediate neighbours. The tree holds up to 10000 nodes. Example: Input: root = [5, 1, 7, null, null, 6, 9] Output: true Explanation: 1 sits left of 5, and the right subtree holds 6 and 9, both greater than 5, with 6 less than 7 less than 9 inside it.",
+    "statement_brief": "does every node satisfy the left-smaller right-greater ordering",
+    "optimized_approach": "pass down admissible min and max bounds to each child, O(n)/O(h)",
+    "edge_cases": "equal values on either side violate validity; deep skewed trees strain recursion depth; single node is valid"
+  },
+  {
+    "id": 37,
+    "title": "List Reorder Weave",
+    "topic": "linked-list",
+    "difficulty": "medium",
+    "statement": "Given the head of a singly linked list holding nodes L0, L1, up to Ln-1, rearrange the nodes into the order L0, Ln-1, L1, Ln-2, L2, Ln-3 and so on, alternating from the front and the back, without altering any node's stored value and using only the existing nodes. The list holds between 1 and 50000 nodes. Example: Input: head = [1, 2, 3, 4, 5] Output: [1, 5, 2, 4, 3] Explanation: The last node is woven in after the first, the second-last after the second, and so on until the middle node 3 closes the list.",
+    "statement_brief": "weave nodes front-back-front into one interleaved order in place",
+    "optimized_approach": "find the middle, reverse the tail, zip the halves together, O(n)/O(1)",
+    "edge_cases": "single or double node lists stay unchanged; odd and even lengths meet differently at the middle; node values must never be copied out"
+  },
+  {
+    "id": 38,
+    "title": "K-Distinct Longest Span",
+    "topic": "sliding-window",
+    "difficulty": "medium",
+    "statement": "You walk along a row of stalls, each selling one fruit type written as a lowercase letter, given as a string s of length up to 100000. Your bag may hold at most k distinct fruit types at once, you cannot skip stalls, and you collect one fruit from every stall you pass. Find the length of the longest uninterrupted run of stalls whose fruits involve at most k distinct types. 1 <= s.length <= 100000 and 1 <= k <= 26. Example: Input: s = \"ecedaabbb\", k = 2 Output: 5 Explanation: The run aabbb uses only the types a and b and spans five stalls, while every run of six needs three or more types.",
+    "statement_brief": "longest run of stalls holding at most k distinct fruits",
+    "optimized_approach": "grow the span right and shrink from the left while distinct types exceed k, O(n)/O(k)",
+    "edge_cases": "k = 26 accepts every letter; single-character string returns 1; a new letter forces evicting an old type"
+  },
+  {
+    "id": 39,
+    "title": "Warmer Day Wait",
+    "topic": "stack",
+    "difficulty": "medium",
+    "statement": "A weather office keeps an array temperatures where temperatures[i] is the reading on day i. For every day, find how many days pass until a strictly hotter day arrives; if no hotter day ever comes, write 0 for that day. Return one wait count per day. 1 <= temperatures.length <= 100000 and 30 <= temperatures[i] <= 100. Example: Input: temperatures = [73, 74, 75, 71, 69, 72, 76, 73] Output: [1, 1, 4, 2, 1, 1, 0, 0] Explanation: Day 3 at 75 waits four days for the 76 on day 7, while the final days never see hotter weather.",
+    "statement_brief": "days to wait until a strictly hotter day appears",
+    "optimized_approach": "hold cooling days on a monotonic stack until a hotter day pops them, O(n)/O(n)",
+    "edge_cases": "strictly decreasing tail stays 0; equal temperatures are not hotter; repeated plateau values"
+  },
+  {
+    "id": 40,
+    "title": "Triplet Zero Hunt",
+    "topic": "two-pointers",
+    "difficulty": "medium",
+    "statement": "Given an integer array nums, list every distinct combination of three values taken from three different positions whose sum is exactly zero. The same value combination must appear only once in the answer even when extra copies of those values exist elsewhere. 3 <= nums.length <= 3000 and -100000 <= nums[i] <= 100000. Example: Input: nums = [-4, -1, -1, 0, 1, 2] Output: [[-1, -1, 2], [-1, 0, 1]] Explanation: The values -1, -1 and 2 sum to zero, and so do -1, 0 and 1; no other three positions add to zero.",
+    "statement_brief": "list unique value triples summing to zero from the array",
+    "optimized_approach": "fix the smallest value then converge two pointers over the sorted remainder, O(n^2)/O(1)",
+    "edge_cases": "duplicate values need de-duplicated combinations; all-zero array yields one combination; no valid combination returns empty"
+  },
+  {
+    "id": 41,
+    "title": "Rotated Array Seek",
+    "topic": "sorting-searching",
+    "difficulty": "medium",
+    "statement": "A sorted array of distinct integers has been spun around an unknown position: it now consists of two ascending runs, with every value in the first run larger than every value in the second. Given this rearranged array and a target value, return the index where the target sits, or -1 if it is missing. 1 <= nums.length <= 5000, all values are distinct, and -10000 <= nums[i] <= 10000. Your method must examine only a handful of elements rather than scanning everything. Example: Input: nums = [6, 7, 8, 1, 2, 4], target = 2 Output: 4 Explanation: The value 2 sits at index 4, inside the second ascending run.",
+    "statement_brief": "find a target's index in a spun sorted array, else -1",
+    "optimized_approach": "each step detect which half is sorted and halve accordingly, O(log n)/O(1)",
+    "edge_cases": "pivot never moved means fully sorted; target missing returns -1; single-element array"
+  },
+  {
+    "id": 42,
+    "title": "Overlap Interval Trim",
+    "topic": "greedy",
+    "difficulty": "medium",
+    "statement": "A calendar holds meetings as half-open intervals [start, end). Choose the minimum number of meetings to cancel so that no two surviving meetings overlap in time; touching at an endpoint, like [1, 3) and [3, 5), does not count as overlapping. 1 <= number of meetings <= 100000 and -50000 <= start < end <= 50000. Example: Input: intervals = [[1, 4], [2, 5], [5, 7]] Output: 1 Explanation: Cancelling [2, 5] leaves [1, 4] and [5, 7], which merely touch at 5 and may coexist, and one cancellation is unavoidable.",
+    "statement_brief": "fewest meetings to cancel so survivors never overlap",
+    "optimized_approach": "sort by end time and keep every meeting starting late enough, O(n log n)/O(1)",
+    "edge_cases": "sharing an endpoint is not overlap; nested intervals; already disjoint input cancels nothing"
+  },
+  {
+    "id": 43,
+    "title": "Solo Pair Hunt",
+    "topic": "bit-manipulation",
+    "difficulty": "medium",
+    "statement": "An integer array contains values where all but two occur an even number of times, and those two exceptional values each occur exactly once. Return the two values that appear once, in any order. 2 <= nums.length <= 30000, -1000000 <= nums[i] <= 1000000, and the length is always even. Example: Input: nums = [4, 9, 4, 6, 7, 7] Output: [9, 6] Explanation: The values 4 and 7 each appear twice, leaving 9 and 6 as the once-only pair, reported here in either order.",
+    "statement_brief": "surface the two values appearing exactly once among pairs",
+    "optimized_approach": "XOR everything, split on any set bit of the result, XOR each group, O(n)/O(1)",
+    "edge_cases": "negative values and sign bits; the two answers may print in either order; length is always even"
+  },
+  {
+    "id": 44,
+    "title": "Clock Hands Angle",
+    "topic": "math",
+    "difficulty": "medium",
+    "statement": "A clock shows a time given as two integers hours and minutes, with 1 <= hours <= 12 and 0 <= minutes <= 59. Compute the smaller angle in degrees between the hour hand and the minute hand, reported as a value from 0 to 180 inclusive. The hour hand moves gradually, advancing half a degree per minute rather than jumping at each full hour. Example: Input: hours = 3, minutes = 30 Output: 75 Explanation: The hour hand stands at 3.5 hours, that is 105 degrees from twelve, while the minute hand stands at 180 degrees, and the gap of 75 degrees is the smaller one.",
+    "statement_brief": "smaller degree gap between a clock's hour and minute hands",
+    "optimized_approach": "hand degrees from the time, take min of gap and 360 - gap, O(1)/O(1)",
+    "edge_cases": "twelve wraps to zero degrees; hour hand creeps half a degree per minute; gaps above 180 flip to the complement"
+  },
+  {
+    "id": 45,
+    "title": "Others Product Build",
+    "topic": "arrays",
+    "difficulty": "medium",
+    "statement": "Given an integer array nums, build an answer array where answer[i] equals the product of every element except nums[i]. Division is not allowed even though it might seem convenient. Every entry of the answer is guaranteed to fit in a 32-bit signed integer. 2 <= nums.length <= 100000 and -30 <= nums[i] <= 30. Example: Input: nums = [2, 3, 4, 5] Output: [60, 40, 30, 24] Explanation: For instance the first entry is 3 * 4 * 5 = 60, skipping the 2 at index 0.",
+    "statement_brief": "each output equals the product of all entries except itself",
+    "optimized_approach": "prefix products forward then fold suffix products into the same buffer, O(n)/O(1) extra",
+    "edge_cases": "one zero zeroes all but itself; two zeros zero everything; sign products stay positive or negative correctly"
+  },
+  {
+    "id": 46,
+    "title": "Coin Count Minimum",
+    "topic": "dp-basics",
+    "difficulty": "medium",
+    "statement": "You hold an endless supply of coins of several positive values, given in an array coins, and you must pay an exact integer amount. Choose as few coins as possible whose values add up to the amount. If the amount cannot be formed exactly no matter the combination, return -1. 1 <= coins.length <= 12, 1 <= coins[i] <= 2147483647 and 0 <= amount <= 10000. Example: Input: coins = [1, 5, 12], amount = 17 Output: 2 Explanation: One 12-coin plus one 5-coin reaches 17 exactly, and no single coin or cheaper pairing does it.",
+    "statement_brief": "fewest coins of listed values summing exactly to an amount",
+    "optimized_approach": "best coin count per subtotal built up to the amount, O(amount * coins)/O(amount)",
+    "edge_cases": "amount 0 needs no coins; unreachable amounts return -1; coin values larger than amount are unusable"
+  },
+  {
+    "id": 47,
+    "title": "Group Word Families",
+    "topic": "strings",
+    "difficulty": "medium",
+    "statement": "A list of lowercase words is given. Every word belongs in a family together with all words that use exactly the same letters with the same multiplicities, regardless of order. Return the families as a list of lists, where each word appears in exactly one family and each family holds at least one word; family order and word order inside a family are up to you. 1 <= number of words <= 10000 and 1 <= word length <= 100. Example: Input: words = [\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"] Output: [[\"eat\", \"tea\", \"ate\"], [\"tan\", \"nat\"], [\"bat\"]] Explanation: eat, tea and ate share the letters a, e and t; tan and nat share a, n and t; bat stands alone.",
+    "statement_brief": "collect words that share identical letters and counts",
+    "optimized_approach": "bucket words by sorted-letter signature, O(n * k log k)/O(n * k)",
+    "edge_cases": "one-word families stand alone; exact duplicate words share a family; family order in output is free"
+  },
+  {
+    "id": 48,
+    "title": "Rotten Fruit Spread",
+    "topic": "graphs-basics",
+    "difficulty": "medium",
+    "statement": "A crate is a grid of cells, each holding a fresh fruit written as 1, a rotten fruit written as 2, or nothing written as 0. Every minute, rot spreads from each rotten fruit to its four orthogonal neighbours, spoiling any fresh fruit found there. Return the minimum number of minutes until no fresh fruit remains, or -1 if some fresh fruit can never be reached. 1 <= rows, cols <= 15. Example: Input: crate = [[2, 1, 1], [1, 1, 0], [0, 1, 1]] Output: 4 Explanation: Rot reaches the last fresh cell in the bottom-right corner after four minutes.",
+    "statement_brief": "minutes until rot spoils all fresh cells, or -1",
+    "optimized_approach": "minute-by-minute spread outward from all rotten cells at once, O(rows*cols)/O(rows*cols)",
+    "edge_cases": "no fresh fruit returns 0; sealed-off fresh fruit returns -1; several rotten sources spread together"
+  },
+  {
+    "id": 49,
+    "title": "Quad Pair Tally",
+    "topic": "hashmaps",
+    "difficulty": "medium",
+    "statement": "Four integer arrays A, B, C and D, all of the same length n, are given. Count how many choices of one index from each array, written (i, j, k, l), satisfy A[i] + B[j] + C[k] + D[l] = 0. All four arrays have length between 1 and 200, and every element lies between -268435456 and 268435456. Example: Input: A = [1, 2], B = [-2, -1], C = [-1, 2], D = [0, 2] Output: 2 Explanation: The picks (0, 0, 0, 1) give 1 - 2 - 1 + 2 = 0, and (1, 1, 0, 0) give 2 - 1 - 1 + 0 = 0.",
+    "statement_brief": "count index choices across four arrays summing to zero",
+    "optimized_approach": "tally pair sums of the first two arrays, probe complements from the last two, O(n^2)/O(n^2)",
+    "edge_cases": "arrays of length one; pair sums near 2^29 strain narrow totals; equal totals must each be counted"
+  },
+  {
+    "id": 50,
+    "title": "Lowest Shared Ancestor",
+    "topic": "trees",
+    "difficulty": "medium",
+    "statement": "A binary search tree is given by its root: for every node, all values in its left subtree are smaller and all values in its right subtree are larger. For two distinct nodes p and q, identified by their values, find their deepest shared ancestor, the node that has both of them beneath it and sits closest to them; a node counts as its own ancestor. The tree holds up to 100000 nodes. Example: Input: root = [6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], p = 2, q = 8 Output: 6 Explanation: The root 6 has both 2 and 8 beneath it, while neither 2 nor 8 contains the other, so 6 is the deepest shared ancestor.",
+    "statement_brief": "deepest node having both p and q beneath it",
+    "optimized_approach": "single downward walk branching on value comparisons, O(h)/O(1)",
+    "edge_cases": "one target descends from the other; values at extreme ends of the range; skewed tree depth near 100000"
+  },
+  {
+    "id": 51,
+    "title": "Chunked Reversal",
+    "topic": "linked-list",
+    "difficulty": "medium",
+    "statement": "You are given the head of a singly linked list of integers and an integer k. Rearrange the list so that every consecutive run of exactly k nodes is reversed in place, while any trailing run holding fewer than k nodes keeps its original order. Nodes must be re-linked through their next references; altering stored values is forbidden. Return the head of the modified list. The list holds between 1 and 5000 nodes, each value is between -1000 and 1000, and 1 <= k <= length. Example: Input: head = [1,2,3,4,5,6,7], k = 3 Output: [3,2,1,6,5,4,7] Explanation: The first three nodes 1,2,3 become 3,2,1, the next three 4,5,6 become 6,5,4, and the lone trailing node 7 stays put.",
+    "statement_brief": "Reverse every group of k nodes, leaving a short tail untouched.",
+    "optimized_approach": "iterative in-place reversal of each k-run with a per-block counter, O(n)/O(1)",
+    "edge_cases": "k equals the full length; a trailing group shorter than k stays put; a single-node list"
+  },
+  {
+    "id": 52,
+    "title": "Distinct Run Length",
+    "topic": "sliding-window",
+    "difficulty": "medium",
+    "statement": "Given a string s of lowercase English letters, return the length of the longest consecutive stretch in which every character occurs at most once. The string length is between 0 and 10^5, and an empty string yields 0. Example: Input: s = \"dvdfka\" Output: 5 Explanation: The stretch starting at the second character, \"vdfka\", holds five different letters, and no longer stretch qualifies.",
+    "statement_brief": "Longest stretch of characters where nothing repeats.",
+    "optimized_approach": "variable window storing each letter's last seen position, O(n)/O(alphabet)",
+    "edge_cases": "the empty string yields zero; a repeat lying before the window start; all characters identical"
+  },
+  {
+    "id": 53,
+    "title": "Path Normalizer",
+    "topic": "stack",
+    "difficulty": "medium",
+    "statement": "You are given a Unix-style file path as a string path. Simplify it into its shortest canonical form. The path begins with a slash and may contain the segment . meaning stay in the current folder, the segment .. meaning move to the parent folder, and runs of consecutive slashes that count as one slash. The canonical form starts with a single slash, keeps no trailing slash unless it is the root itself, and keeps no . or .. segments. Example: Input: /a/./b/../../c/ Output: /c Explanation: enter a, stay, enter b, go up two levels back to the root, then enter c. Constraints: 1 <= path.length <= 3000; path consists of letters, digits, dots, underscores and slashes.",
+    "statement_brief": "canonicalize a Unix path that contains . and .. segments",
+    "optimized_approach": "split on slashes, stack of segments popping on .., O(n)/O(n)",
+    "edge_cases": "path reduces to the root so the answer is just /; trailing or repeated slashes collapse to one; .. at the root level stays at the root"
+  },
+  {
+    "id": 54,
+    "title": "Zero-Sum Triplets",
+    "topic": "two-pointers",
+    "difficulty": "medium",
+    "statement": "An integer array of up to 3000 values, each between -10^5 and 10^5, is given. Enumerate every distinct combination of three values whose total is exactly 0. Combinations differing only in the order of the same three values count once, so the answer must not repeat a value triple even when several index choices produce it. Return the matching value triples. Example: Input: nums = [-1,0,1,2,-1,-4] Output: [[-1,-1,2],[-1,0,1]] Explanation: Those are the only two distinct value triples totaling zero; the combination (-1,0,1) arises from two different index choices but is listed once.",
+    "statement_brief": "List every distinct triple of values adding up to zero.",
+    "optimized_approach": "sort, fix the smallest element, sweep the rest from both ends, O(n^2)/O(1) extra",
+    "edge_cases": "duplicate values breeding repeated triples; an array of all zeros; fewer than three elements"
+  },
+  {
+    "id": 55,
+    "title": "Spun Dial Lookup",
+    "topic": "sorting-searching",
+    "difficulty": "medium",
+    "statement": "An array was once arranged in ascending order with all distinct values, then pivoted at some unknown position so the order wraps around, e.g. [0,1,2,4,5,6,7] can become [4,5,6,7,0,1,2]. Given the array in this wrapped form together with a target value, return the index where the target sits, or -1 when it is absent. The array holds at most 5000 elements with values between -10^9 and 10^9, and the judge rejects solutions that scan the array from end to end. Example: Input: nums = [4,5,6,7,0,1,2], target = 0 Output: 4 Explanation: After the wrap-around, the value 0 occupies index 4.",
+    "statement_brief": "Locate a target inside a once-sorted wrapped array or fail.",
+    "optimized_approach": "halve the range by testing which half remains ordered, O(log n)/O(1)",
+    "edge_cases": "a single-element array; the target being absent; the pivot sitting at the first or last index"
+  },
+  {
+    "id": 56,
+    "title": "Peer Product Array",
+    "topic": "arrays",
+    "difficulty": "medium",
+    "statement": "Given an integer array nums of length between 2 and 10^5 with every element between -30 and 30, build an answer array where position i holds the product of every element of nums except nums[i]. You may not divide, because some entries may be zero, and the answer must be produced with no storage beyond the output itself. Example: Input: nums = [1,2,3,4] Output: [24,12,8,6] Explanation: Position 0 collects 2*3*4 = 24, position 1 collects 1*3*4 = 12, and the pattern continues to the end.",
+    "statement_brief": "Fill each slot with the product of all other elements.",
+    "optimized_approach": "prefix and suffix running products folded through the output buffer, O(n)/O(1) extra",
+    "edge_cases": "exactly one zero in the input; two or more zeros forcing an all-zero output; negative values flipping signs"
+  },
+  {
+    "id": 57,
+    "title": "Nightly Loot Cap",
+    "topic": "dp-basics",
+    "difficulty": "medium",
+    "statement": "A street of n houses lines up in a row, and house i stores loot worth money[i]. Triggering two adjacent houses on one outing raises an alarm, so the chosen houses must contain no neighbors. Maximize the total worth collected in one outing. n is between 1 and 100 and each worth is between 0 and 400. Example: Input: money = [2,7,9,3,1] Output: 12 Explanation: Choosing houses 0, 2 and 4 collects 2 + 9 + 1 = 12, more than any other legal selection.",
+    "statement_brief": "Pick non-neighboring houses maximizing the collected worth.",
+    "optimized_approach": "rolling two-state best-total recurrence, O(n)/O(1)",
+    "edge_cases": "a single house; two houses forcing exactly one pick; all-zero worths"
+  },
+  {
+    "id": 58,
+    "title": "Longest Mirror Stretch",
+    "topic": "strings",
+    "difficulty": "medium",
+    "statement": "Given a string s of lowercase letters with length between 1 and 1000, return the longest consecutive piece of s that reads identically forwards and backwards. When several pieces tie for the greatest length, return the one that begins earliest. Example: Input: s = \"cababaxy\" Output: \"ababa\" Explanation: The piece covering the second through sixth characters reads the same in both directions and outlasts every other symmetric piece.",
+    "statement_brief": "Earliest longest piece reading the same in both directions.",
+    "optimized_approach": "expand around every center including letter gaps, O(n^2)/O(1)",
+    "edge_cases": "the whole string already symmetric; nothing longer than one letter existing; ties resolved to the leftmost piece"
+  },
+  {
+    "id": 59,
+    "title": "Land Patch Census",
+    "topic": "graphs-basics",
+    "difficulty": "medium",
+    "statement": "A survey grid of m rows and n columns stores the character '1' for solid ground and '0' for water. Ground cells belong together when they share a horizontal or vertical edge; diagonal contact does not connect. Count how many separate patches of connected ground the grid contains. 1 <= m, n <= 300. Example: Input: grid = [[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"1\",\"1\",\"0\",\"0\",\"0\"],[\"0\",\"0\",\"1\",\"0\",\"0\"],[\"0\",\"0\",\"0\",\"1\",\"1\"]] Output: 3 Explanation: The block in the top-left corner, the lone middle cell, and the block in the bottom-right corner form three separate patches.",
+    "statement_brief": "Count edge-connected ground patches scattered in a water grid.",
+    "optimized_approach": "flood every unvisited ground cell and mark its whole patch, O(m*n)/O(m*n)",
+    "edge_cases": "a grid of only water; a grid of only land; a single-cell grid"
+  },
+  {
+    "id": 60,
+    "title": "Shuffled Word Families",
+    "topic": "hashmaps",
+    "difficulty": "medium",
+    "statement": "You receive up to 10^4 words, each up to 100 lowercase letters long. Group together every word that can be turned into another member of its group purely by rearranging its letters, and return all the groups in any order. Example: Input: words = [\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"] Output: [[\"eat\",\"tea\",\"ate\"],[\"tan\",\"nat\"],[\"bat\"]] Explanation: The first three words all consist of exactly the letters e, a and t, so they share a group, while bat matches none of the others.",
+    "statement_brief": "Cluster words built from identical letter multisets into groups.",
+    "optimized_approach": "canonical sorted-letters signature as the grouping key, O(n*k log k)/O(n*k)",
+    "edge_cases": "an empty-string word; exact duplicate words; a lone word forming its own group"
+  },
+  {
+    "id": 61,
+    "title": "Grove Order Audit",
+    "topic": "trees",
+    "difficulty": "medium",
+    "statement": "You are handed the root of a binary tree whose nodes carry integer values. Verify that for every node, every value inside its left subtree is strictly smaller than the node's value and every value inside its right subtree is strictly larger. The tree holds between 1 and 10^4 nodes with values spanning the full 32-bit signed range. Example: Input: root = [5,1,6,null,null,3,9] Output: false Explanation: Although the subtree rooted at 6 looks tame, the value 3 lives in the right subtree of the root while being smaller than 5, so the rule is broken.",
+    "statement_brief": "Check each node's left values are smaller and right values larger.",
+    "optimized_approach": "top-down sweep carrying each node's allowed value interval, O(n)/O(h)",
+    "edge_cases": "values equal to an ancestor being rejected; a deep one-sided chain stressing depth; extreme 32-bit boundary values"
+  },
+  {
+    "id": 62,
+    "title": "Loopback Shift Right",
+    "topic": "linked-list",
+    "difficulty": "medium",
+    "statement": "Given the head of a singly linked list of integers and a non-negative integer k, move every node k positions toward the tail and let nodes pushed past the end wrap around to the front, then return the new head. Stored values never change. The list holds between 0 and 500 nodes with values between -100 and 100, and k may be far larger than the list itself. Example: Input: head = [1,2,3,4,5], k = 7 Output: [4,5,1,2,3] Explanation: Moving seven places equals moving two once the list size is accounted for, so the tail nodes 4 and 5 lead the result.",
+    "statement_brief": "Rotate nodes toward the tail by k, wrapping to the front.",
+    "optimized_approach": "measure length, close a loop at the tail, break after len - k mod len hops, O(n)/O(1)",
+    "edge_cases": "k exceeding the length needing a modulo; empty or single-node lists; k a multiple of the length changing nothing"
+  },
+  {
+    "id": 63,
+    "title": "Smallest Covering Span",
+    "topic": "sliding-window",
+    "difficulty": "medium",
+    "statement": "Given two strings s and t, return the shortest piece of s that contains every character of t, respecting multiplicities: two 'a' letters in t demand two inside the piece. If s holds no qualifying piece, return the empty string. Lengths reach 10^5 for both, uppercase and lowercase letters are distinct, and the test data guarantees at most one shortest answer. Example: Input: s = \"adobecodebanc\", t = \"abc\" Output: \"banc\" Explanation: Several pieces of s contain a, b and c together, but the four-letter tail \"banc\" is the shortest of them.",
+    "statement_brief": "Shortest piece of s holding every character of t, counts honored.",
+    "optimized_approach": "grow right, shrink left while demand counts stay satisfied, O(|s|+|t|)/O(alphabet)",
+    "edge_cases": "t longer than s; repeated letters in t needing matching counts; no qualifying piece returning the empty string"
+  },
+  {
+    "id": 64,
+    "title": "Nested Repeat Codes",
+    "topic": "stack",
+    "difficulty": "medium",
+    "statement": "A message was squeezed by wrapping segments in square brackets preceded by a repetition count, and counts may sit inside other counts. Given the squeezed text s of length up to 30, guaranteed well-formed with lowercase letters and digit counts, expand it back to the original message, whose length stays under 10^4. Example: Input: s = \"3[a2[c]]\" Output: \"accaccacc\" Explanation: The inner part 2[c] becomes cc, and tripling that yields acc acc acc written together.",
+    "statement_brief": "Expand bracketed repetition counts, including counts within counts.",
+    "optimized_approach": "stack frames of accumulated text and pending multipliers unwound at each closing bracket, O(n*maxK)/O(n)",
+    "edge_cases": "deeply nested counts; multi-digit counts like 12[ab]; segments with no brackets at all"
+  },
+  {
+    "id": 65,
+    "title": "Between the Walls",
+    "topic": "two-pointers",
+    "difficulty": "medium",
+    "statement": "n vertical walls stand side by side at positions 1 through n, wall i having height h[i]. Choose two walls: with the ground they form a vessel holding water up to the shorter wall's height, and the water width equals the distance separating the two walls. Report the greatest amount of water such a vessel can hold. 2 <= n <= 10^5 and 0 <= h[i] <= 10^4. Example: Input: h = [1,8,6,2,5,4,8,3,7] Output: 49 Explanation: The wall of height 8 at position 2 with the wall of height 7 at position 9 holds min(8,7) * 7 = 49 units, unbeatable here.",
+    "statement_brief": "Greatest water held by any two walls: shorter height times gap.",
+    "optimized_approach": "start wide and always retire the shorter wall, O(n)/O(1)",
+    "edge_cases": "only two walls; zero-height walls at the edges; every wall the same height"
+  },
+  {
+    "id": 66,
+    "title": "Carousel Seat Shift",
+    "topic": "arrays",
+    "difficulty": "medium",
+    "statement": "An integer array of length between 1 and 10^5 with values between -10^9 and 10^9 must be rotated to the right by k positions, where elements falling off the end re-enter at the front. Update the array in place using only a constant amount of extra memory, given k between 0 and 10^9. Example: Input: nums = [1,2,3,4,5,6,7], k = 3 Output: [5,6,7,1,2,3,4] Explanation: The last three elements step to the front while everything else slides toward the tail.",
+    "statement_brief": "Rotate all elements k slots right with the overflow wrapping.",
+    "optimized_approach": "reverse the whole array then each side of the k split, O(n)/O(1)",
+    "edge_cases": "k above the length needing a modulo; k of zero or a multiple of the length; a single-element array"
+  },
+  {
+    "id": 67,
+    "title": "Coin Purse Minimum",
+    "topic": "dp-basics",
+    "difficulty": "medium",
+    "statement": "With unlimited copies of coins of several distinct denominations, pay an exact amount using as few coins as possible. Each denomination is between 1 and 10^4, up to 12 denominations are given, and the amount to pay is between 0 and 10^4. Return the smallest coin count, or -1 when no combination reaches the amount. Example: Input: coins = [1,2,5], amount = 11 Output: 3 Explanation: Two coins of 5 plus one coin of 1 reach 11, and no payment succeeds with two or fewer coins.",
+    "statement_brief": "Fewest coins paying an exact amount, or -1 if impossible.",
+    "optimized_approach": "bottom-up best count per sub-amount trying every coin, O(amount * coins)/O(amount)",
+    "edge_cases": "an amount of zero; unreachable amounts such as coins of 5 and amount 3; an amount below every denomination"
+  },
+  {
+    "id": 68,
+    "title": "Prerequisite Feasibility",
+    "topic": "graphs-basics",
+    "difficulty": "medium",
+    "statement": "A term offers n courses labeled 0 through n-1, and a list of pairs states demands: a pair [a, b] says course b must be finished before course a begins. Decide whether all n courses can be arranged in an order that breaks no demand. n is at most 2000, there are at most 5000 distinct pairs, and no pair demands a course before itself. Example: Input: n = 4, pairs = [[0,1],[1,2],[2,3]] Output: true Explanation: Finishing course 3, then 2, then 1, then 0 honors every demand, so an arrangement exists.",
+    "statement_brief": "Decide whether all courses can be ordered without breaking demands.",
+    "optimized_approach": "repeatedly peel off courses with no unfinished demands, O(n+p)/O(n+p)",
+    "edge_cases": "circular demand chains; courses with no demands at all; duplicate pair entries"
+  },
+  {
+    "id": 69,
+    "title": "Sum Slice Tally",
+    "topic": "hashmaps",
+    "difficulty": "medium",
+    "statement": "An integer array of up to 2 * 10^4 elements, each between -1000 and 1000, and a target total k between -10^7 and 10^7 are given. Count how many contiguous runs of elements total exactly k. Runs occupying different positions count separately even when their contents look identical. Example: Input: nums = [1,1,1], k = 2 Output: 2 Explanation: The run covering indexes 0 to 1 and the run covering indexes 1 to 2 each total 2, so both count.",
+    "statement_brief": "Count contiguous runs whose elements total exactly the target.",
+    "optimized_approach": "prefix totals with a running count of seen prefix values, O(n)/O(n)",
+    "edge_cases": "negative values letting totals repeat; a target of zero amid many zeros; the empty run never counted"
+  },
+  {
+    "id": 70,
+    "title": "Common Kin Finder",
+    "topic": "trees",
+    "difficulty": "medium",
+    "statement": "Every node of a binary tree holds a distinct integer value. Given the tree and the values of two chosen nodes, return the value of their deepest shared ancestor, where a node counts as an ancestor of itself. The tree has between 2 and 10^5 nodes, all values are distinct, and both requested values are guaranteed present. Example: Input: root = [3,5,1,6,2,0,8,null,null,7,4], p = 5, q = 4 Output: 5 Explanation: The node valued 4 hangs under the node valued 2, which hangs under 5; since a node is its own ancestor, 5 is the deepest shared one.",
+    "statement_brief": "Value of the deepest shared ancestor of two given nodes.",
+    "optimized_approach": "a single descent returning matched nodes upward, O(n)/O(h)",
+    "edge_cases": "one target sitting on the other's path; targets split across opposite sides; a target equal to the root"
+  },
+  {
+    "id": 71,
+    "title": "Lowest Missing Number",
+    "topic": "arrays",
+    "difficulty": "hard",
+    "statement": "An unsorted integer array of up to 10^5 entries, each anywhere in the 32-bit signed range, is given. Find the smallest strictly positive integer that appears nowhere in it. The judge insists on a solution that touches the array a constant number of times, mutates it only in place, and allocates no auxiliary containers. Example: Input: nums = [3,4,-1,1] Output: 2 Explanation: The values 1 and 3 are present, so the smallest positive integer absent from the array is 2.",
+    "statement_brief": "Smallest positive integer absent from the array, found in place.",
+    "optimized_approach": "in-place cyclic placement sending each value v to slot v-1, then a scan, O(n)/O(1)",
+    "edge_cases": "the array containing 1 through n so the answer is n+1; large negatives and zeros cluttering the array; duplicate values"
+  },
+  {
+    "id": 72,
+    "title": "Typo Repair Distance",
+    "topic": "dp-basics",
+    "difficulty": "hard",
+    "statement": "Two words A and B of lowercase letters, each up to 500 characters long, are given. One operation may insert a letter into A, delete a letter from A, replace a letter of A, or swap two adjacent letters of A. Find the fewest operations that turns A into B exactly. Example: Input: A = \"ca\", B = \"abc\" Output: 2 Explanation: Swapping the adjacent letters of A produces \"ac\", and inserting b then gives \"abc\"; no single operation is enough.",
+    "statement_brief": "Fewest edits incl. adjacent swaps to turn word A into word B.",
+    "optimized_approach": "prefix table with an extra adjacent-transposition case, O(|A|*|B|)/O(|B|)",
+    "edge_cases": "identical words costing nothing; swaps helping only exactly adjacent letters; one word being empty"
+  },
+  {
+    "id": 73,
+    "title": "Column Text Fitting",
+    "topic": "strings",
+    "difficulty": "hard",
+    "statement": "Typeset a paragraph into lines of exactly maxWidth characters, where maxWidth is between 1 and 20 and the input gives up to 300 words, each 1 to 20 characters, none longer than maxWidth. Fill each line with as many leading words as fit, separating them by single spaces. On every line but the last, pad the leftover spaces as evenly as possible across the gaps, dealing extras to the leftmost gaps first; a line holding one word is padded on the right only. The last line keeps single spaces between words with trailing spaces filling the width. Return every line. Example: Input: words = [\"This\",\"is\",\"an\",\"example\",\"of\",\"text\",\"justification.\"], maxWidth = 16 Output: [\"This    is    an\",\"example  of text\",\"justification.  \"] Explanation: The first line spreads three words across sixteen characters with four spaces in each gap; the final line pads on the right.",
+    "statement_brief": "Wrap words into fixed-width lines with even gap spacing.",
+    "optimized_approach": "pack lines then distribute leftover spaces round-robin per gap, O(total characters)/O(1) extra",
+    "edge_cases": "lone-word lines padding trailing spaces; the last line never justifying; leftover spaces favoring leftmost gaps"
+  },
+  {
+    "id": 74,
+    "title": "Alien Alphabet Order",
+    "topic": "graphs-basics",
+    "difficulty": "hard",
+    "statement": "An unknown civilization orders lowercase letters by rules unlike English. You receive up to 100 words, each up to 100 letters, listed exactly as its dictionary would order them. Reconstruct one ordering of the letters consistent with the list; among all consistent orderings, return the one smallest in ordinary English letter sequence. If the list contradicts itself and no ordering works, return an empty string. Example: Input: words = [\"wrt\",\"wrf\",\"er\",\"ett\",\"rftt\"] Output: \"wertf\" Explanation: wrt before wrf forces t before f, wrf before er forces w before e, er before ett forces r before t, and er before rftt forces e before r, chaining w, e, r, t, f.",
+    "statement_brief": "Derive the letter ordering implied by a foreign word list.",
+    "optimized_approach": "precedence edges from adjacent word pairs plus smallest-first extraction, O(total letters + 26^2)/O(26)",
+    "edge_cases": "a longer word preceding its own prefix; letters never appearing in comparisons; contradictory cycles returning the empty string"
+  },
+  {
+    "id": 75,
+    "title": "Word Block Windows",
+    "topic": "hashmaps",
+    "difficulty": "hard",
+    "statement": "A string s of length up to 10^4 and a list of up to 5000 words, all words the same length between 1 and 30, are given. Report every starting index at which a block of glued words begins such that the block uses every listed word exactly once, in any order, with no gaps and no overlaps between the glued words. Indices must come back in ascending order. Example: Input: s = \"barfoothefoobarman\", words = [\"foo\",\"bar\"] Output: [0,9] Explanation: Starting at 0, \"barfoo\" consumes both words; starting at 9, \"foobar\" consumes them the other way round.",
+    "statement_brief": "Start indices where all listed words glue together exactly once.",
+    "optimized_approach": "strided windows per word-length offset with deficit counts, O(|s| * wordLen)/O(words)",
+    "edge_cases": "duplicate words inside the list; s shorter than one word; overlapping partial matches that must not count"
+  },
+  {
+    "id": 76,
+    "title": "Greatest Grove Trail",
+    "topic": "trees",
+    "difficulty": "hard",
+    "statement": "Each node of a binary tree carries an integer value, possibly negative. A trail is any chain of distinct nodes linked parent-to-child, containing at least one node; it may begin and end anywhere and need not reach the root. Return the largest sum of node values along any trail. The tree holds up to 3 * 10^4 nodes with values between -1000 and 1000. Example: Input: root = [-10,9,20,null,null,15,7] Output: 42 Explanation: The trail 15 -> 20 -> 7 sums to 42, and the negative root keeps every trail through it lower.",
+    "statement_brief": "Largest possible node-value sum over any parent-child chain.",
+    "optimized_approach": "per-node best downward gain folded in while descending, O(n)/O(h)",
+    "edge_cases": "all values negative taking the single best node; a one-node tree; trails skipping the root entirely"
+  },
+  {
+    "id": 77,
+    "title": "Merging Sorted Chains",
+    "topic": "linked-list",
+    "difficulty": "hard",
+    "statement": "You receive k singly linked lists, between 1 and 10^4 of them, each list arranged in ascending order, holding between 0 and 500 nodes with values between -10^4 and 10^4. Relink every node from every list into one ascending list and return its head; empty lists contribute nothing but must not break anything. The combined node count stays below 10^5. Example: Input: lists = [[1,4,5],[1,3,4],[2,6]] Output: [1,1,2,3,4,4,5,6] Explanation: All nodes re-link in nondecreasing order across the three inputs, duplicates included.",
+    "statement_brief": "Relink k ascending lists into a single ascending list.",
+    "optimized_approach": "round-robin pairwise combination of lists across rounds, O(N log k)/O(1) extra",
+    "edge_cases": "lists of zero nodes; only one list supplied; duplicate values spread across lists"
+  },
+  {
+    "id": 78,
+    "title": "Pane Maximum Sweep",
+    "topic": "sliding-window",
+    "difficulty": "hard",
+    "statement": "An integer array of up to 10^5 values, each between -10^4 and 10^4, is given along with a frame size k between 1 and the array length. Slide the frame across the array one position per step and record the largest value visible inside it at each of the n - k + 1 positions, in order. The judge expects running time proportional to the array length regardless of k. Example: Input: nums = [1,3,-1,-3,5,3,6,7], k = 3 Output: [3,3,5,5,6,7] Explanation: The first frame holds 1, 3 and -1, whose largest is 3; the third frame -1, -3, 5 yields 5, and the last frame 3, 6, 7 yields 7.",
+    "statement_brief": "Largest value inside each length-k frame, in order.",
+    "optimized_approach": "index queue holding frame candidates in decreasing value order, O(n)/O(k)",
+    "edge_cases": "k equal to the array length; k equal to one echoing the array; strictly decreasing values evicting constantly"
+  },
+  {
+    "id": 79,
+    "title": "Skyline Panel Area",
+    "topic": "stack",
+    "difficulty": "hard",
+    "statement": "n vertical bars of unit width stand shoulder to shoulder, bar i rising to height h[i] with 0 <= h[i] <= 10^4 and n up to 10^5. Choose a contiguous run of bars; the run outlines a rectangle whose width is the number of bars and whose height is the shortest bar inside the run. Find the largest rectangle area any run can outline. Example: Input: h = [2,1,5,6,2,3] Output: 10 Explanation: The run formed by the bars of heights 5 and 6 is two bars wide with floor 5, giving 10 units of area, the best available.",
+    "statement_brief": "Largest rectangle under a contiguous bar run, floored by its lowest bar.",
+    "optimized_approach": "bar indexes kept in rising-height order, popped to compute spans, O(n)/O(n)",
+    "edge_cases": "zero-height bars splitting runs; heights rising then plunging; a single-bar array"
+  },
+  {
+    "id": 80,
+    "title": "Basin Fill Height",
+    "topic": "two-pointers",
+    "difficulty": "hard",
+    "statement": "Elevation bars of unit width stand in a row; bar i rises to h[i] between 0 and 10^5 and there are up to 2 * 10^4 bars. After a downpour, every dip holds water bounded sideways by the tallest bars toward each end and capped by the shorter of those two. Compute the total units of water pooled across the row. Example: Input: h = [0,1,0,2,1,0,1,3,2,1,2,1] Output: 6 Explanation: The valleys between taller bars pool six units of water in total.",
+    "statement_brief": "Total units of rain pooled between elevation bars.",
+    "optimized_approach": "walk inward from both ends tracking the best wall so far, O(n)/O(1)",
+    "edge_cases": "monotonic slopes pooling nothing; flat rows pooling nothing; one or two bars pooling nothing"
+  },
+  {
+    "id": 81,
+    "title": "Dual Sorted Median",
+    "topic": "sorting-searching",
+    "difficulty": "hard",
+    "statement": "Two arrays given in ascending order hold m and n values respectively, each size between 0 and 1000 with values between -10^6 and 10^6, and at least one array is non-empty. Return the middle of the combined multiset: the single middle value when m + n is odd, otherwise the average of the two middle values. The judge rejects anything slower than logarithmic time in m + n. Example: Input: a = [1,2], b = [3,4] Output: 2.5 Explanation: Combining gives [1,2,3,4]; the two middles 2 and 3 average to 2.5.",
+    "statement_brief": "Middle of two ascending arrays combined, even case averaged.",
+    "optimized_approach": "cut the shorter array proportionally and check boundary pairs, O(log min(m,n))/O(1)",
+    "edge_cases": "one array being empty; an even combined size needing averaging; value ranges that never interleave"
+  },
+  {
+    "id": 82,
+    "title": "Clip Montage Cover",
+    "topic": "greedy",
+    "difficulty": "hard",
+    "statement": "A montage must span every moment of an event lasting from 0 to T, with T up to 100. Up to 100 clips are available; clip i covers the interval from start_i to end_i with 0 <= start_i < end_i <= 100, each clip is usable at most once, and clips may be trimmed. Choose the fewest clips whose combined coverage, laid end to end, spans [0, T] without gaps. Return -1 when the event cannot be spanned. Example: Input: clips = [[0,2],[4,6],[1,9],[1,6],[7,9],[3,9],[9,10],[0,8]], T = 10 Output: 3 Explanation: Taking [0,2], then [1,9], then [9,10] spans the whole event, and no two clips reach that far.",
+    "statement_brief": "Fewest clips whose intervals span the entire timeline.",
+    "optimized_approach": "sort by start and extend the furthest reach in waves, O(n log n)/O(1)",
+    "edge_cases": "no clip starting at or before zero; a single clip spanning everything; an unreachable gap forcing -1"
+  },
+  {
+    "id": 83,
+    "title": "Pairwise XOR Range",
+    "topic": "bit-manipulation",
+    "difficulty": "hard",
+    "statement": "An integer array holds up to 5 * 10^4 values, each between 0 and 10^9. Given bounds low and high with 0 <= low <= high <= 10^9, count the unordered pairs of distinct indexes i < j whose element-by-element exclusive-or lands inside the inclusive range from low to high. The answer can approach the billions, so compute it efficiently. Example: Input: nums = [1,4,6,3], low = 3, high = 5 Output: 2 Explanation: Only 1 with 4 gives 5 and 6 with 3 gives 5; every other pair's exclusive-or falls outside the range.",
+    "statement_brief": "Count index pairs whose XOR lands between low and high.",
+    "optimized_approach": "bitwise prefix tree counting in-range completions per insert, O(n * 31)/O(n * 31)",
+    "edge_cases": "low equal to high; zero values pairing with everything; totals that can reach about 1.25 billion"
+  },
+  {
+    "id": 84,
+    "title": "Charmed Multiple Hunt",
+    "topic": "math",
+    "difficulty": "hard",
+    "statement": "Call a positive integer charming when it divides evenly by a, by b, or by both. Given a and b between 1 and 4 * 10^4 and an index n up to 10^9, locate the n-th charming number counting upward from 1 and return it modulo 10^9 + 7. Example: Input: n = 4, a = 2, b = 3 Output: 6 Explanation: The charming numbers ascend 2, 3, 4, 6, 8, 9, ... so the fourth one is 6.",
+    "statement_brief": "n-th positive integer divisible by a or b, modulo 1e9+7.",
+    "optimized_approach": "inclusion-exclusion counting to bisect the answer, O(log(n * min(a,b)))/O(1)",
+    "edge_cases": "a equal to b; one value dividing the other; n near 10^9 demanding modular reduction"
+  },
+  {
+    "id": 85,
+    "title": "Widest Spread Gap",
+    "topic": "arrays",
+    "difficulty": "hard",
+    "statement": "An unsorted array of between 2 and 10^5 non-negative integers, each at most 10^9, is given. Line the values up from smallest to largest and consider the difference between every pair of adjacent values; report the largest such difference. The judge refuses any solution that orders the values by direct element comparisons. Example: Input: nums = [3,6,9,1] Output: 3 Explanation: Arranged as 1, 3, 6, 9, the neighbor differences are 2, 3 and 3, so the answer is 3.",
+    "statement_brief": "Largest adjacent difference after ordering, without comparison ordering.",
+    "optimized_approach": "pigeonhole buckets sized by min/max spacing, comparing bucket extremes only, O(n)/O(n)",
+    "edge_cases": "all values equal yielding zero; exactly two elements; one tiny value far from all the rest"
+  },
+  {
+    "id": 86,
+    "title": "Balloon Pop Order",
+    "topic": "dp-basics",
+    "difficulty": "hard",
+    "statement": "n balloons between 1 and 300 hang in a row, balloon i worth coins[i] between 1 and 100. Bursting balloon i awards coins[left] * coins[i] * coins[right], where left and right are the nearest balloons still hanging on each side and a missing side counts as 1. Burst every balloon, choosing the order that maximizes the total coins, and report that total. Example: Input: coins = [3,1,5,8] Output: 167 Explanation: Burst 1 for 3*1*5 = 15, then 5 for 3*5*8 = 120, then 3 for 1*3*8 = 24, then 8 for 8, totaling 167, the best order.",
+    "statement_brief": "Bursting order that maximizes collected coin products.",
+    "optimized_approach": "interval table treating one balloon as burst last between fixed walls, O(n^3)/O(n^2)",
+    "edge_cases": "a single balloon scoring its own value; earlier bursts reshaping neighbor products; equal values everywhere"
+  },
+  {
+    "id": 87,
+    "title": "Front Padded Palindrome",
+    "topic": "strings",
+    "difficulty": "hard",
+    "statement": "A string s of lowercase letters, up to 5 * 10^4 long, may only gain characters in front of itself. Produce the shortest string that ends with s and reads identically in both directions; such a string is unique. The judge expects time roughly linear in the length of s. Example: Input: s = \"aacecaaa\" Output: \"aaacecaaa\" Explanation: One extra 'a' in front completes the nine-letter symmetric string, and no shorter addition works.",
+    "statement_brief": "Prepend the fewest letters making the string read both ways.",
+    "optimized_approach": "longest self-symmetric prefix via prefix-function over the doubled text, O(n)/O(n)",
+    "edge_cases": "s already symmetric returning itself; strings of one repeated letter; single-character input"
+  },
+  {
+    "id": 88,
+    "title": "Itinerary Stitching",
+    "topic": "graphs-basics",
+    "difficulty": "hard",
+    "statement": "You hold up to 300 plane tickets; each ticket is an ordered pair of three-letter airport codes and gets spent exactly once. Starting from the airport \"JFK\", use every ticket exactly once, choosing freely where to fly next among the remaining tickets. Several complete routes may exist; return the one whose airport sequence is smallest in ordinary alphabetical order at the earliest differing position. The data guarantees at least one complete route. Example: Input: tickets = [[\"MUC\",\"LHR\"],[\"JFK\",\"MUC\"],[\"SFO\",\"SJC\"],[\"LHR\",\"SFO\"]] Output: [\"JFK\",\"MUC\",\"LHR\",\"SFO\",\"SJC\"] Explanation: Every ticket is spent once and the trip necessarily opens at JFK.",
+    "statement_brief": "Spend all tickets from JFK, preferring the alphabetically least route.",
+    "optimized_approach": "postorder emission over sorted destinations then reversal, O(E log E)/O(E)",
+    "edge_cases": "several tickets between the same pair; a dead-end airport that must wait until its own tickets are spent; loops returning to JFK"
+  },
+  {
+    "id": 89,
+    "title": "Collinear Sight Count",
+    "topic": "hashmaps",
+    "difficulty": "hard",
+    "statement": "Up to 300 beacons stand on a plane; beacon i sits at integer coordinates (x_i, y_i) with absolute values up to 10^4, and two beacons may share a spot. Report the largest number of beacons lying on one single straight line. Example: Input: points = [[1,1],[2,2],[3,3],[1,-2]] Output: 3 Explanation: The beacons at (1,1), (2,2) and (3,3) share one diagonal, and no other line gathers more.",
+    "statement_brief": "Most beacons sharing any one straight line.",
+    "optimized_approach": "per-anchor reduced-slope tallies via gcd, O(n^2)/O(n)",
+    "edge_cases": "coincident beacons merging into every line; vertical lines needing special slopes; every beacon at one spot"
+  },
+  {
+    "id": 90,
+    "title": "Grove Snapshot Codes",
+    "topic": "trees",
+    "difficulty": "hard",
+    "statement": "Build a way to freeze any binary tree of integer-valued nodes into a single text string and to rebuild exactly that tree from the string later. Trees reach 10^4 nodes with values between -1000 and 1000, and nodes carry no special ordering. Freeze: given a root, emit the string. Rebuild: given the string, return a root reproducing the original node links, not merely the same multiset of values. Example: Input: tree built from [1,2,3,null,null,4,5] Output: an identical tree after a freeze-then-rebuild round trip Explanation: Any unambiguous text format passes as long as rebuilding inverts freezing exactly.",
+    "statement_brief": "Encode any binary tree to text and decode it back intact.",
+    "optimized_approach": "preorder walk with null markers plus a cursor on rebuild, O(n)/O(n)",
+    "edge_cases": "an empty tree round-tripping through a marker; a depth-10^4 one-sided chain; duplicate values surviving rebuilding"
+  },
+  {
+    "id": 91,
+    "title": "Alternating Block Reversal",
+    "topic": "linked-list",
+    "difficulty": "hard",
+    "statement": "Given the head of a singly linked list holding between 1 and 5000 integer nodes and an integer k with 2 <= k <= length, rework the list in consecutive blocks of k nodes each: reverse the first block in place, leave the second block as is, reverse the third, and keep alternating down the line. A final incomplete block still counts as one block and is reversed only when it lands in a reverse position. Values must stay inside their nodes; re-link the next references instead. Example: Input: head = [1,2,3,4,5,6,7,8], k = 3 Output: [3,2,1,4,5,6,8,7] Explanation: The first block 1,2,3 flips to 3,2,1, the second block 4,5,6 stays, and the leftover block 7,8, sitting in a reverse position, flips to 8,7.",
+    "statement_brief": "Reverse every other block of k nodes down the list.",
+    "optimized_approach": "block-by-block walk tracking parity and splicing reversed runs, O(n)/O(1)",
+    "edge_cases": "a final block shorter than k; k spanning the entire list; length an exact multiple of k"
+  },
+  {
+    "id": 92,
+    "title": "Shortest Heavy Subarray",
+    "topic": "sliding-window",
+    "difficulty": "hard",
+    "statement": "An integer array of up to 10^5 elements, each between -10^5 and 10^5, and a target k with absolute value up to 10^9 are given. Return the length of the shortest run of consecutive elements whose total reaches at least k, or -1 when no run does. Example: Input: nums = [2,-1,2], k = 3 Output: 3 Explanation: The whole array totals 3, and no shorter run gets there, so the answer is 3.",
+    "statement_brief": "Shortest consecutive run totaling at least k, negatives included.",
+    "optimized_approach": "prefix totals kept in rising order, popped when runs shrink, O(n)/O(n)",
+    "edge_cases": "negative values defeating left-to-right assumptions; a negative k making one element enough; no qualifying run at all"
+  },
+  {
+    "id": 93,
+    "title": "Bracketed Arithmetic Solver",
+    "topic": "stack",
+    "difficulty": "hard",
+    "statement": "Evaluate a line of arithmetic containing non-negative integers, the operators +, -, *, /, and parentheses, where division truncates toward zero. The text runs up to 500 characters, spaces may appear anywhere, intermediate and final results fit in a 32-bit signed integer, and standard precedence applies with parentheses overriding it. Return the computed value. Example: Input: s = \"2*(5+5*2)/3+(6/2+8)\" Output: 21 Explanation: Inside the first parentheses 5+5*2 = 15, doubled to 30 and divided by 3 gives 10; the second parentheses give 3+8 = 11; the total is 21.",
+    "statement_brief": "Compute an arithmetic line with precedence, parentheses, truncating division.",
+    "optimized_approach": "operand-and-sign registers per nesting level handling precedence inline, O(n)/O(n)",
+    "edge_cases": "unary minus before a parenthesis; division truncating toward zero on negative results; parentheses nested several deep"
+  },
+  {
+    "id": 94,
+    "title": "Trim to Sorted",
+    "topic": "two-pointers",
+    "difficulty": "hard",
+    "statement": "An array of up to 10^5 integers, each between -10^9 and 10^9, is almost nondecreasing. Delete one contiguous block from the middle of the array — the block may be empty — so that whatever remains, keeping its original order, is nondecreasing. Return the smallest length such a deleted block can have. Example: Input: arr = [1,2,3,10,4,2,3,5] Output: 3 Explanation: Removing the block 10,4,2 leaves [1,2,3,3,5], which never decreases, and no shorter removal manages that.",
+    "statement_brief": "Shortest middle block to erase so leftovers never decrease.",
+    "optimized_approach": "longest sorted prefix and suffix merged with a converging scan, O(n)/O(1)",
+    "edge_cases": "an already nondecreasing array deleting nothing; plateaus of equal values at the seams; deleting everything between the sorted ends"
+  },
+  {
+    "id": 95,
+    "title": "Bounded Batch Splitting",
+    "topic": "sorting-searching",
+    "difficulty": "hard",
+    "statement": "An array of up to 1000 non-negative integers, each at most 10^6, must be cut into at most m consecutive non-empty groups, preserving the original order, where 1 <= m <= length. Among every way of cutting, minimize the largest group total and report that total. Example: Input: nums = [7,2,5,10,8], m = 2 Output: 18 Explanation: Cutting after the 5 gives groups [7,2,5] and [10,8] with totals 14 and 18; every other cut makes the larger total exceed 18.",
+    "statement_brief": "Minimize the largest consecutive group total when cutting into m groups.",
+    "optimized_approach": "cap on group totals with a counting feasibility pass, tightened by halving, O(n log sum)/O(1)",
+    "edge_cases": "m equal to the length taking the largest element; m of one taking the whole total; zeros inside the array"
+  },
+  {
+    "id": 96,
+    "title": "Deadline Class Rush",
+    "topic": "greedy",
+    "difficulty": "hard",
+    "statement": "Up to 10^4 courses are offered; course i needs duration_i days and must be completely finished by day deadline_i, both numbers between 1 and 10^4. You study one course at a time starting on day 1 and may order them freely. Return the maximum number of courses you can complete without any finish day exceeding its deadline. Example: Input: courses = [[100,200],[200,1300],[1000,1250],[2000,3200]] Output: 3 Explanation: Taking the first three courses finishes them on days 100, 300 and 1300, all within their deadlines; adding the 2000-day course would push the finish to day 3300, past its limit of 3200.",
+    "statement_brief": "Most courses completable before their individual deadlines.",
+    "optimized_approach": "sort by deadline, evict the longest chosen course on overflow, O(n log n)/O(n)",
+    "edge_cases": "one course longer than its own deadline; identical deadlines; an already-picked long course needing eviction later"
+  },
+  {
+    "id": 97,
+    "title": "Subset XOR Peak",
+    "topic": "bit-manipulation",
+    "difficulty": "hard",
+    "statement": "An array holds up to 10^5 non-negative integers, each below 2^31. Pick any non-empty subset of the values; its worth is the bitwise exclusive-or of all chosen values. Report the greatest worth any subset can reach. Example: Input: nums = [3,10,5,25,2,8] Output: 31 Explanation: Choosing 25, 5 and 3 gives 25 xor 5 xor 3 = 31, and nothing bigger is reachable.",
+    "statement_brief": "Greatest XOR value achievable by any non-empty subset.",
+    "optimized_approach": "reduce values into a triangular XOR basis, then clear high bits greedily, O(n*31)/O(31)",
+    "edge_cases": "all-zero input answering zero; duplicated values collapsing in the basis; a lone-element array"
+  },
+  {
+    "id": 98,
+    "title": "Line Prize Allocation",
+    "topic": "arrays",
+    "difficulty": "hard",
+    "statement": "Children stand in one line, child i carrying a rating between 1 and 10^5, with up to 2 * 10^4 children. Every child must hold at least one token, and whenever a child's rating is strictly higher than an immediate neighbor's, that child must hold strictly more tokens than the neighbor. Hand out the fewest total tokens satisfying both rules and report the total. Example: Input: ratings = [1,0,2] Output: 5 Explanation: The middle child gets one token; both neighbors outrank it and receive two each, so 2 + 1 + 2 = 5 tokens suffice and fewer do not.",
+    "statement_brief": "Fewest tokens so higher-rated neighbors always get more.",
+    "optimized_approach": "left pass then right pass combining per-seat minimums, O(n)/O(n)",
+    "edge_cases": "strictly descending ratings; equal neighbors imposing nothing; a single child in line"
+  },
+  {
+    "id": 99,
+    "title": "Wildcard Pattern Verdict",
+    "topic": "dp-basics",
+    "difficulty": "hard",
+    "statement": "Decide whether an entire lowercase text agrees with a compact template built from lowercase letters plus two marks: a dot stands for any single letter, and a star means the mark before it may vanish or repeat any number of times in a row. Each star is guaranteed to follow a letter or a dot. Text and template each run up to 20 characters, and the whole text, first to last letter, must agree with the template. Example: Input: text = \"aab\", template = \"c*a*b\" Output: true Explanation: The c* part vanishes entirely while a* repeats the single a twice, so the template folds onto aab.",
+    "statement_brief": "Does the dot-and-star template match the whole text?",
+    "optimized_approach": "table over text and template prefixes handling star repetition, O(|text|*|tpl|)/O(|tpl|)",
+    "edge_cases": "a star erasing its preceding mark completely; dots matching exactly one letter; empty text against a star-heavy template"
+  },
+  {
+    "id": 100,
+    "title": "Scrambled Twin Check",
+    "topic": "strings",
+    "difficulty": "hard",
+    "statement": "Starting from a word s of up to 40 lowercase letters, repeatedly split any current piece into two non-empty parts and optionally swap the two parts; after any number of such moves, a word t reachable from s is called a kin of s. Given two words s and t of equal length, report whether t is a kin of s. Example: Input: s = \"great\", t = \"rgeat\" Output: true Explanation: Split great into gr and eat; the piece gr splits into g and r, which swap into rg, and gluing rg with eat forms rgeat.",
+    "statement_brief": "Can one word morph into another by recursive halving swaps?",
+    "optimized_approach": "memoized split comparisons with letter-count pruning, O(n^4)/O(n^3)",
+    "edge_cases": "identical words being kin of themselves; mismatched letter multisets failing fast; odd lengths splitting unevenly"
+  }
+]

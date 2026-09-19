@@ -143,6 +143,17 @@ def _load_card() -> _ReportCardFile:
         raise _CorruptCard from exc
 
 
+def read_history() -> list[dict[str, object]]:
+    """ALL history records as dicts, newest first (date-ascending store, reversed).
+
+    Change-2 tracking store: the DSA selector derives solved/partial question
+    state from this — history is the single source of truth, no separate
+    solved-markers file, capped at nothing (full retention by design).
+    """
+    records = _read_history()
+    return [record.model_dump() for record in reversed(records)]
+
+
 def read_report_card() -> ReportCardData:
     """Load the report card + profile snapshot + history for ``load_context``, with
     per-field TrendVerdicts precomputed by compute_trend — nodes never do trend math.
@@ -280,6 +291,7 @@ __all__ = [
     "SaveSessionArgs",
     "WriteProfileArgs",
     "init_report_card",
+    "read_history",
     "read_report_card",
     "save_session_results",
     "write_profile",

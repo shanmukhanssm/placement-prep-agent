@@ -21,8 +21,15 @@ from prep_agent.state import QuestionRecord
 
 
 class ProblemSpec(BaseModel):
-    """One DSA problem — catalog-copied fields; statement LLM-phrased (behavior-dsa §2.1)."""
+    """One DSA problem — bank-copied fields; statement verbatim from the bank (Change-2).
 
+    ``qid`` is the bank id 1..100 (0 = legacy catalog question without a bank id).
+    The user sees only "Question {qid}" — title/topic/difficulty stay internal
+    (owner rule: numbers only), while the evaluator still grades against the
+    bank's ground truth.
+    """
+
+    qid: int = 0
     title: str
     topic: str
     difficulty: Literal["easy", "medium", "hard"]
