@@ -41,6 +41,18 @@ A curated catalog (target ~50 entries; 15 seeds in §2.5) is the **only** source
 
 Why non-negotiable: the evaluator grades at temp 0.2 against `optimized_approach` as ground truth. A runtime-invented problem has no verified ground truth — grading integrity collapses and eval Layer-3 anchors can't be calibrated. New catalog entries are **spec-file edits (owner-reviewed), never runtime inventions**. The LLM's job is selection + statement phrasing, not problem design.
 
+### ⚠ Change-2 UPDATE (2026-09-19, owner-approved) — bank-based selection supersedes §2.1/§2.2
+
+The 15-entry seed catalog is superseded by a **shipped 100-question bank** (`src/prep_agent/data/dsa_bank.json`, loaded via `tools/dsa_bank.py`; ids 1..100 = ascending global difficulty, tiers locked to the id: 1-30 easy / 31-70 medium / 71-100 hard). §2.1's grading-integrity rule is STRENGTHENED: statements ship verbatim from the bank — the selector makes **no LLM call at all**, and `optimized_approach`/`edge_cases` still ride from the file, never through an LLM. §2.2's deterministic selection is replaced by the reasoning-based `_select_question` (same determinism, richer policy):
+
+1. **Solved never again:** a question whose newest history termination is `pass` is solved — never re-served, across ANY number of sessions (full-history tracking via `read_history`; the wrap writes a parseable `Q{id} (tier) — brief` line).
+2. **Partial follow-up first:** a non-pass question comes back BEFORE any new pick, announced with a one-line note derived from the stored verdict ("last time you reached brute force at 55/100 — push for the optimal approach this time"). Oldest partial rotates in first.
+3. **Tier frontier:** pass on the last session steps one tier UP; < 50 steps DOWN; else holds (a 90 on a first easy question earns a medium next).
+4. **Topic diversity:** least-covered topics first; topics served in the last 2 DSA sessions are excluded when possible ("you've covered this topic → a different topic now").
+5. **Weak-area pool** (§2.2 rule 1) still applies; **frontier id** = lowest unsolved id in the chosen topic/tier.
+6. **Numbers-only display (owner rule):** the student sees ONLY "Question {id}" + the statement — title, topic and difficulty labels stay internal; the selection's WHY is narrated ("Why this one: …").
+7. **Exhausted bank** → the session ends honestly.
+
 ### 2.2 Selection rules (deterministic, runs at `phase=select`)
 
 1. **Weak-area pool:** build the candidate topic pool from the 14 catalog areas (arrays, strings, hashmaps, two-pointers, sliding-window, stack, linked-list, trees, greedy, dp-basics, graphs-basics, sorting-searching, bit-manipulation, math). If `profile.weak_areas` names any catalog topics → pool = **those weak topics only**.

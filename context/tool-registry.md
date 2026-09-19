@@ -15,6 +15,11 @@
 | `init_report_card` | `src/prep_agent/tools/report_card.py` | `onboarding` (completion step) | Creates `data/report-card.json` | PASS (v1) |
 | `save_session_results` | `src/prep_agent/tools/report_card.py` | `dsa_wrap`, `comm_wrap`, `core_wrap` | Appends history file + rewrites report-card.json | PASS (v1) |
 | `render_report_card` | `src/prep_agent/tools/render.py` | CLI (post-session hook, v1) | Writes/rewrites `REPORT_CARD.html` | PASS (v2 — Phase 3.2 template upgrade) |
+| `read_history` | `src/prep_agent/tools/report_card.py` | dsa `_select_question` (C2: solved/partial tracking over FULL history), `_mint_record_id` | None (read-only) | PASS (v1 — Change-2) |
+| `read_memory` / `write_memory` / `write_basics` | `src/prep_agent/tools/memory.py` | `load_context` (digest), `remember` node, `onboarding` (basics-first write) | Reads/writes `data/memory.json` (atomic) | PASS (v1 — Change-3) |
+| `reset_memory` | `src/prep_agent/tools/memory.py` | **CLI ONLY** (`python -m prep_agent reset-memory`). NO node may call it — the agent can never wipe memory (owner requirement) | Deletes `data/memory.json` | PASS (v1 — Change-3) |
+| `load_bank` / `bank_entry` | `src/prep_agent/tools/dsa_bank.py` | dsa `selector` / `_select_question` | None (read-only package data `src/prep_agent/data/dsa_bank.json`) | PASS (v1 — Change-2) |
+| `ensure_syllabus` | `src/prep_agent/tools/syllabus.py` | core `_syllabus` (free-text subjects) | Reads/writes `data/syllabus/{slug}.json` (atomic cache; one `core_syllabus` LLM call on miss) | PASS (v1 — Change-1) |
 
 Pure function (not an LLM tool, unit-tested directly): `compute_trend(records) -> TrendVerdict` in `src/prep_agent/tools/progress_math.py`.
 
@@ -28,9 +33,13 @@ This list is closed. No other tool may be called from any node. Adding a tool: r
 data/
 ├── profile.json             written once by write_profile, edited only via that tool
 ├── report-card.json         source of truth: profile snapshot, per-field score lists, trend verdicts
+├── memory.json              Change-3: cross-session memory (basics first + student facts; CLI-only reset)
+├── syllabus/                Change-1: generated per-subject syllabus caches ({slug}.json)
 └── history/                 append-only audit trail, one file per completed session
     └── 2026-09-12-dsa-1.json
 ```
+
+Versioned SOURCE data (not runtime): `src/prep_agent/data/dsa_bank.json` — the 100-question DSA bank (Change-2), read via `tools/dsa_bank.py`.
 
 ---
 

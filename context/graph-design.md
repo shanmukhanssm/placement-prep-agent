@@ -83,7 +83,9 @@ Onboarding is a node-level sub-phase machine (not a compiled subgraph): collects
 | `route_intent` | `route_turn` | 3c. `intent == "core_subject"` | `core_session` |
 | `route_intent` | `route_turn` | 3d. `intent == "progress"` | `progress_talk` |
 | `route_intent` | `route_turn` | 3e. `intent == "exit"` | `farewell` |
-| `route_intent` | `route_turn` | 3f. `intent == "smalltalk"` — the route_turn node normalizes `confidence < 0.6` to `smalltalk`, so the edge stays a pure string match | `clarify` |
+| `route_intent` | `route_turn` | 3f. `intent == "greet"` — Change-3: a pure greeting from a known student finally reaches the long-built greet_returning node | `greet_returning` |
+| `route_intent` | `route_turn` | 3g. `intent == "memory"` — Change-3: durable personal facts / recall / reset asks (reset answered honestly in code — the agent can never wipe memory) | `remember` |
+| `route_intent` | `route_turn` | 3h. `intent == "smalltalk"` — the route_turn node normalizes `confidence < 0.6` to `smalltalk`, so the edge stays a pure string match | `clarify` |
 | `route_after_specialist` | each specialist wrap | session complete | END (router regains control next turn) |
 
 ---
@@ -131,6 +133,7 @@ class MainState(BaseModel):
     profile: Profile | None = None                                       # overwrite
     has_profile: bool = False                                            # overwrite
     trend_summary: dict[str, TrendVerdict] = {}                          # overwrite
+    memory_digest: str = ""                                              # overwrite — Change-3: basics first + facts + trend line
     turn_count: int = 0                                                  # overwrite (+1 in load_context)
     # routing
     session_active: Literal["", "dsa", "communication", "core_subject"] = ""   # overwrite

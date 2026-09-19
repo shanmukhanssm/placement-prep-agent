@@ -12,6 +12,8 @@
 | --- | --- | --- | --- | --- |
 | ALL roles | env `LLM_MODEL` (placeholder `llama-3.3-70b-versatile`) | see entries | see entries | Model strings sourced ONLY from config.py; any OpenAI-compatible provider is an env change. Live provider: xkiro (owner key in .env) — `qwen/qwen3.5-flash:free` 2026-09-15, retired upstream 2026-09-16 → `deepseek/deepseek-v4.1-flash:free` (smoke-verified: plain text, bind_tools+required, JSON-in-content). |
 | Judge tiering candidate (parked) | `llama-3.1-8b-instant` | 0.2 | 400 | Cost/rate-limit lever if free-tier limits bite — NOT active |
+| `core_syllabus` (Change-1) | placeholder | 0.4 | 700 | One-shot syllabus generation for a free-text core subject (6-10 topics + blurbs), cached at `data/syllabus/{slug}.json`; LLM-down → deterministic generic fallback, cached with `source=fallback` |
+| `remember` (Change-3) | placeholder | 0.3 | 250 | Memory write/recall turn — up to 3 guarded facts per turn or a digest-strict recall reply; scores are NEVER stored in memory (report card owns them) |
 
 Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]` (default Groq `https://api.groq.com/openai/v1`), `api_key=os.environ["LLM_API_KEY"]`, `model` from config.py. Changing provider = env change only. Per-role Max-token budgets above are now WIRED in code (B-8 fix, 2026-09-16): `config.get_llm` passes `max_tokens=ROLE_MAX_TOKENS[role]` — this registry stays the source of the values; amend both together.
 
@@ -19,14 +21,14 @@ Client: `langchain_openai.ChatOpenAI` with `base_url=os.environ["LLM_BASE_URL"]`
 
 ---
 
-## `router_classify` — v2
+## `router_classify` — v3
 
 | Property | Value |
 | --- | --- |
 | Node | `route_turn` — the LLM runs ONLY when `has_profile == True` AND `session_active == ""`; otherwise routing is deterministic (active session → specialist · no profile → onboarding) |
 | Prompt text | `src/prep_agent/prompts/router.py::ROUTER_CLASSIFY_V1` |
 | Model / temp / max tokens | placeholder / 0.0 / 150 |
-| Structured output | `IntentClassification {intent: dsa|communication|core_subject|progress|smalltalk|exit, confidence: 0.0-1.0}` |
+| Structured output | `IntentClassification {intent: dsa\|communication\|core_subject\|progress\|greet\|memory\|smalltalk\|exit, confidence: 0.0-1.0}` |
 | Consumed state | `user_message`, 1-line session context (last field practiced) |
 | Version history | v1 — initial intake · v2 — Phase 4 fix (B-5): dsa-vs-core_subject disambiguation rules + 8-line few-shot block (eval evidence: Layer 2 deterministic misroute "my arrays are weak" → core_subject/0.95; near-paraphrase "arrays are my weak area" routed dsa correctly) |
 
@@ -225,7 +227,7 @@ Rules:
 
 ---
 
-## `dsa_selector` — v1 (Phase 2.3 revision per behavior-dsa.md)
+## `dsa_selector` — v1 (Phase 2.3 revision per behavior-dsa.md) — **RETIRED (Change-2)**
 
 | Property | Value |
 | --- | --- |
@@ -234,7 +236,7 @@ Rules:
 | Model / temp / max tokens | placeholder / 0.7 / 500 |
 | Structured output | `ProblemSpec {title, topic, difficulty, statement, statement_brief, optimized_approach, edge_cases}` — **Phase 2.3 delta (same commit)**: problem SELECTION is deterministic in code (behavior-dsa §2.2 over the 15-entry seed catalog in prompts/dsa.py); the LLM only phrases the self-contained statement. The node assembles the final `ProblemSpec` with `optimized_approach`/`edge_cases` copied from the catalog — never from the LLM (grading-integrity rule, behavior-dsa §2.1). LLM failure → statement falls back to the catalog brief; the session continues. |
 | Consumed state | chosen catalog entry (title/difficulty/statement brief, injected), `profile.weak_areas` + report-card history (consumed by the deterministic selector code) |
-| Version history | v1 — initial intake (LLM-selected) · v1-rev (Phase 2.3: selection moved to code, prompt = statement phrasing only) |
+| Version history | v1 — initial intake (LLM-selected) · v1-rev (Phase 2.3: selection moved to code, prompt = statement phrasing only) · **RETIRED (Change-2, same commit as the bank): the 100-question bank ships verbatim statements, so the selector makes NO LLM call at all — the constant was removed from prompts/dsa.py and the `dsa_selector` role from config.py |
 
 ```
 Write the self-contained problem statement for the ONE DSA problem already chosen.
@@ -318,6 +320,31 @@ Write the self-contained problem statement for the ONE DSA problem already chose
 | Structured output | `CoreAnswerScore {score: 0-10, correctness: 0-10, completeness: 0-10, terminology: 0-10, verdict: str, probe_needed: bool = False}` — **Phase 2.4 deltas (same commit)**: the §3.2 holistic derivation is carried verbatim (marks covered=1/partial=0.5/missed=0 → `completeness = max(0, 10 − 1.5·missed − 0.75·partial)` → weighted raw, ties DOWN → `coverage_cap = 2 + 8·coverage` → wrong-claim cap ≤ 5 → empty/IDK/skip = 0); the consumed state includes the probe exchange for the once-per-question re-score (§4); `probe_needed` requests the single disambiguating probe (Q1–Q7, session budget 3, code-enforced); failure path → verdict exactly `"un-scored"`, excluded from the mean |
 | Consumed state | current question + its `expected_answer_points`, the answer (composite when probed), probe history, question number |
 | Version history | v1 — initial intake · v2 — Phase 2.4 (§3.2 derivation, probe exchange + probe_needed, caps) |
+
+---
+
+## `remember` — v1 (NEW, Change-3)
+
+| Property | Value |
+| --- | --- |
+| Node | `remember` (router intent `memory`; reset asks are answered HONESTLY in code BEFORE any LLM call — the agent can never wipe memory, CLI-only reset) |
+| Prompt text | `src/prep_agent/prompts/memory.py::REMEMBER_TURN_V1` |
+| Model / temp / max tokens | placeholder / 0.3 / 250 |
+| Structured output | `MemoryTurn {facts: list[MemoryFact{key, value}] (≤3), reply}` — facts are re-validated CODE-SIDE (key normalization + instruction-guard) before `write_memory`; a rejected batch gets an honest "couldn't save" reply, never a false confirmation |
+| Consumed state | `user_message`, `memory_digest` (the ONLY quotable source for recall) |
+| Failure path | LLM down twice → deterministic digest narration (or an honest "nothing stored yet"); no write happens |
+
+---
+
+## `core_syllabus` — v1 (NEW, Change-1)
+
+| Property | Value |
+| --- | --- |
+| Node | `ensure_syllabus` (tools/syllabus.py, called by core `_syllabus` for free-text subjects only) |
+| Prompt text | `src/prep_agent/prompts/core_subject.py::CORE_SYLLABUS_GENERATOR_V1` |
+| Model / temp / max tokens | placeholder / 0.4 / 700 |
+| Structured output | `GeneratedSyllabus {topics: list[SyllabusTopic{name, blurb}] (6-10)}` — cached atomically at `data/syllabus/{slug}.json`; < 6 usable topics or LLM down → deterministic generic fallback, ALSO cached (no repeated dead calls) |
+| Consumed state | the declared free-text subject (from `Profile.core_subject`) |
 
 ---
 
