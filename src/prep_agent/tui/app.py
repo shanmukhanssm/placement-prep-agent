@@ -185,6 +185,9 @@ class PrepTUI(App[None]):
 
     CSS = CHAT_CSS + CARD_CSS + SIDEBAR_CSS + MODAL_CSS + APP_CSS
 
+    TITLE = "Placement Prep Coach"
+    SUB_TITLE = "placement-prep-agent"
+
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", priority=True),
         Binding("ctrl+r", "report", "Report", priority=True),
