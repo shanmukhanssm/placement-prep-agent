@@ -14,12 +14,21 @@ the clarify loop or misrouted into a core viva. ``clarify`` now escalates: at
 swaps to CLARIFY_ESCALATE_V1 and answers honestly instead of asking a third
 time. DISCUSSION_V1 injects no trend numbers, so number-integrity holds
 trivially there.
+
+v4 narration payload (live Ravi-session finding): ``_trend_json`` no longer
+dumps the raw TrendVerdict models — internal stat names (``avg_last3``,
+``overall_avg``), the raw verdict token (``not_enough_data``) and unrounded
+floats (``60.93333333333334``) were being echoed character-for-character per
+the mechanical copy rules. The payload is now a display shape: plain-English
+keys (``recent_average`` / ``previous_average`` / ``overall_average``), verdict
+words (``"not enough data yet"``), floats rounded to 1 decimal at the payload.
+``compute_trend`` stays exact; rounding happens only where numbers meet prose.
 """
 
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Final
 
 from prep_agent.config import message_text
 from prep_agent.prompts.greetings import (
@@ -41,11 +50,42 @@ _IDENTITY_RE = re.compile(
     r"who are you|what are you|who r u|what r u|who're you|your name|who am i talking", re.I
 )
 
+# Live Ravi-session finding: the raw pydantic dump leaked internal stat names
+# ("overall_avg of 72.0"), the raw verdict token ("shows not_enough_data since")
+# and unrounded floats ("60.93333333333334") into user-facing text. The prompt
+# payload is therefore a DISPLAY shape: plain-English stat keys, verdict words
+# instead of tokens, floats rounded to 1 decimal. compute_trend itself stays
+# exact — rounding happens only where numbers meet prose.
+_VERDICT_WORDS: Final[dict[str, str]] = {
+    "improving": "improving",
+    "flat": "flat",
+    "declining": "declining",
+    "not_enough_data": "not enough data yet",
+}
+
+
+def _display_verdict(verdict: TrendVerdict) -> dict[str, str | float | None]:
+    """Human-readable display form of one trend verdict — the only trend shape
+    the LLM ever sees. Internal field names, raw verdict tokens, and raw floats
+    never enter a prompt, so the mechanical copy rules cannot echo them."""
+    return {
+        "trend": _VERDICT_WORDS[verdict.verdict],
+        "recent_average": (
+            round(verdict.avg_last3, 1) if verdict.avg_last3 is not None else None
+        ),
+        "previous_average": (
+            round(verdict.avg_prev3, 1) if verdict.avg_prev3 is not None else None
+        ),
+        "overall_average": (
+            round(verdict.overall_avg, 1) if verdict.overall_avg is not None else None
+        ),
+    }
+
 
 def _trend_json(trend_summary: dict[str, TrendVerdict]) -> str:
-    """Compact JSON of the precomputed trend verdicts — the ONLY numbers the LLM may quote."""
+    """Compact JSON of the display payload — the ONLY numbers the LLM may quote."""
     return json.dumps(
-        {field: verdict.model_dump() for field, verdict in trend_summary.items()},
+        {field: _display_verdict(verdict) for field, verdict in trend_summary.items()},
         ensure_ascii=False,
     )
 
@@ -53,15 +93,16 @@ def _trend_json(trend_summary: dict[str, TrendVerdict]) -> str:
 def _verdict_line(field: str, verdict: TrendVerdict | None) -> str:
     """One honest sentence per field for the templated fallback — no invented numbers.
 
-    ``verdict.avg_last3`` is the only number quoted (it lives in trend_summary, so
-    the number-integrity check passes). Avoid hardcoded counts like "3" — they
-    would invent a numeral the trend_summary JSON does not carry.
+    ``verdict.avg_last3`` is the only number quoted; it is rounded to 1 decimal
+    so the fallback carries exactly the numerals ``_trend_json`` injects (the
+    number-integrity check compares against that same payload). Avoid hardcoded
+    counts like "3" — they would invent a numeral the payload does not carry.
     """
     if verdict is None or verdict.verdict == "not_enough_data":
         return f"{field}: not enough data yet"
     if verdict.avg_last3 is None:
         return f"{field}: {verdict.verdict}"
-    return f"{field}: {verdict.verdict} (recent avg {verdict.avg_last3})"
+    return f"{field}: {verdict.verdict} (recent avg {verdict.avg_last3:.1f})"
 
 
 def _trend_narration(trend_summary: dict[str, TrendVerdict]) -> str:

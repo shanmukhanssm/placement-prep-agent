@@ -34,11 +34,19 @@ v3-rev: greet_returning detects identity asks DETERMINISTICALLY in code
 persona line alone was not enough (the trend narration drowned the identity
 answer); now the identity question gets a dedicated prompt with the core
 subject interpolated and the same verbatim-numeral rules.
+
+v4 (live Ravi-session findings): the injected trend payload was humanized at
+the code layer (see nodes/greetings.py — plain-English stat keys, verdict
+words, floats rounded to 1 decimal), because the raw pydantic dump leaked
+"avg_last3 of 77.0", "overall_avg of 72.0", the raw token "not_enough_data"
+and "60.93333333333334" into student-facing text. Every narration prompt now
+also carries the speak-keys-as-plain-words rule (never snake_case key names).
 """
 
 from prep_agent.prompts.router import COACH_PERSONA
 
-# v3 (Fix cycle): persona prepended + identity-ask rule; number rules unchanged.
+# v4 (live Ravi finding): payload humanized + speak-keys-as-plain-words rule;
+# number rules unchanged.
 GREET_RETURNING_V1 = COACH_PERSONA + """Welcome {name} back. Narrate their progress using ONLY these numbers:
 {trend_summary_json}
 
@@ -52,11 +60,15 @@ Number rules — mechanical, zero exceptions:
 - Do not attach % or any unit that changes the numeral's text.
 
 Rules:
-- improving/flat/declining verdicts: state them honestly; for declining, be
+- Speak the stat names as plain words — "recent average", "previous average",
+  "overall average", "trend" — NEVER the JSON key names themselves (no
+  "avg_last3", no "recent_average", no snake_case tokens, ever).
+- improving/flat/declining trends: state them honestly; for declining, be
   kind and concrete ("arrays dipped since your last sessions — let's revisit
   them").
-- If a field has verdict "not_enough_data", say so plainly ("communication
-  needs more sessions before I can read a trend").
+- If a field's trend reads "not enough data yet", say that plainly
+  ("communication needs more sessions before I can read a trend") — never the
+  raw token, and never a key name in its place.
 - End by asking what they want to practice today (dsa, communication, or their
   core subject) — conversationally, not as a numbered menu.
 - If their message asks who you are, answer that in one short line first (you
@@ -64,7 +76,8 @@ Rules:
 - Max 4 sentences."""
 
 
-# v3 (Fix cycle): persona prepended; number rules unchanged.
+# v4 (live Ravi finding): payload humanized + speak-keys-as-plain-words rule;
+# number rules unchanged.
 PROGRESS_TALK_V1 = COACH_PERSONA + """The student asks: "{user_message}". Answer from ONLY these numbers:
 {trend_summary_json}
 
@@ -78,14 +91,17 @@ Number rules — mechanical, zero exceptions:
 - Do not attach % or any unit that changes the numeral's text.
 
 Rules:
-- If a field has verdict "not_enough_data", say so plainly in words, e.g.
+- Speak the stat names as plain words — "recent average", "previous average",
+  "overall average", "trend" — NEVER the JSON key names themselves (no
+  "avg_last3", no "recent_average", no snake_case tokens, ever).
+- If a field's trend reads "not enough data yet", say so plainly in words, e.g.
   ("communication needs more sessions before I can read a trend") — never
-  output the raw verdict token itself, and never invent a number to cover it.
+  output the raw token itself, and never invent a number to cover it.
 - Concrete and encouraging; name the weakest field and suggest it.
 - Max 4 sentences."""
 
 
-# v3 (Fix cycle): persona prepended; number rules unchanged.
+# v4 (live Ravi finding): speak-keys-as-plain-words rule; number rules unchanged.
 FAREWELL_V1 = COACH_PERSONA + """Say goodbye warmly. Recap in one line what was practiced today and, if
 trend_summary shows a verdict change, mention it. Invite them back tomorrow.
 Sessions practiced today: {sessions_today}. Trend summary: {trend_summary_json}.
@@ -100,6 +116,8 @@ Number rules — mechanical, zero exceptions:
 - Do not attach % or any unit that changes the numeral's text.
 
 Rules:
+- Speak the stat names as plain words ("recent average", "overall average") —
+  never the JSON key names themselves.
 - Max 3 sentences. Friendly, never robotic."""
 
 
@@ -131,6 +149,8 @@ coach — here to drill DSA problems, interview communication, their core subjec
 ({core_subject}), and to track their progress over sessions. Do NOT name any
 model or provider. Then add ONE welcome-back line narrating progress using ONLY
 these precomputed numbers (copy character-for-character including the decimal
-point; never derive, count, or reformat; never attach % or units):
+point; never derive, count, or reformat; never attach % or units; speak the
+stat names as plain words — "recent average", "overall average" — never the
+JSON key names):
 {trend_summary_json}
 Max 3 sentences total."""
