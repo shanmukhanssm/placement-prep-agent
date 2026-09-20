@@ -7,7 +7,7 @@ This folder holds the skill packages that govern HOW work is done in this workfl
 - Each skill lives in its own folder: `skills/<skill-name>/` containing `SKILL.md` (and, for stage skills, a `references/` folder loaded on demand).
 - The pipeline lists this folder at the start of every session (Orient step) and loads the governing skill **before** the work it governs — never after.
 - Each `SKILL.md` frontmatter carries trigger phrases and sibling exclusions, so skills activate on real user language and never double-load for one job.
-- New skills must follow `FORMAT_SPEC.md` (repo root). When a skill is added, the mapping table in AGENTS.md §1 and this README are updated in the same commit.
+- New skills follow the repo-wide skill format: a `SKILL.md` with frontmatter (trigger phrases, sibling exclusions), a workflow, an execution checklist, and gotchas — plus `references/` for deep material. When a skill is added, the mapping table in AGENTS.md §1 and this README are updated in the same commit.
 - If a governing skill file is missing, the pipeline stops and asks for it. Skills are never approximated from memory.
 
 ## Installed skills (12)

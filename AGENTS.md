@@ -98,7 +98,7 @@ A project may skip HARDEN only if `project-overview.md` explicitly declares it a
 - Large repo or task needs only some paths: sparse checkout of the required files only.
 - No write access to the repo: fork first, clone the fork, work on a branch, open a pull request against the upstream repo.
 - **Push credentials:** the user provides a GitHub username and a GitHub API key / PAT. They are available via the environment (`GITHUB_USERNAME`, `GITHUB_TOKEN`) or the `gh` CLI. Use them only for clone/push against the user's repos. Never print them, never commit them, never write them into any file.
-- The skill library and `context-references/` live in this repo. If the agent project repo is separate, this repo is cloned alongside it; paths in this file are relative to this repo's root.
+- The skill library lives in this repo (`skills/`). The context-format reference set (`context-references/`) is maintained outside this repo; keep it available when running Intake (§18). Paths in this file are relative to this repo's root.
 - If the repo has no `context/` directory — do not start building. Run the Intake procedure (§18) first, which starts with `agent-architecture-advisor`.
 
 ---
@@ -293,13 +293,14 @@ A feature is done when ALL of these are true:
 
 ## 16. Context References — The Format Authority
 
-The `context-references/` folder in this repo holds **filled examples of the ten context files** (example project: DeepResearch, a LangGraph research assistant).
+The **filled examples of the ten context files** (the format reference set) are maintained outside this repo, alongside the skill library.
 
 **The rule: the examples define the FORMAT; the interview defines the CONTENT.**
 
 - When generating context files for a new project (Intake, §18), open the matching reference example and copy its structure exactly — sections, order, tables, code-block conventions, header conventions.
 - Never copy the example's content. Never invent sections the reference does not have. Never silently drop a section that does not apply — keep it with a one-line `N/A — <reason>`, so the format stays stable across projects.
-- If `context-references/` is missing a file needed for generation — **stop and ask the user.** Never generate context files without a format reference; improvised formats break cross-project consistency, which is the entire point of this pipeline.
+- If the format reference set is missing a file needed for generation — **stop and ask the user.** Never generate context files without a format reference; improvised formats break cross-project consistency, which is the entire point of this pipeline.
+- The best format reference for what these files look like when filled is this repo's own build history: the placement-prep agent was itself built through this exact pipeline.
 
 ---
 
@@ -348,7 +349,7 @@ Feed the interview answers to `agent-architecture-advisor` and produce, before a
 
 ### Step 3 — Locate the Format References
 
-Locate the reference examples of the ten context files (`context-references/` in this repo, or a location the user states). If they exist: their structure is authoritative for format (§16). If they cannot be found: **stop and ask the user** for the reference set. Never generate context files without a format reference.
+Locate the reference examples of the ten context files (the format reference set — §16, or a location the user states). If they exist: their structure is authoritative for format (§16). If they cannot be found: **stop and ask the user** for the reference set. Never generate context files without a format reference.
 
 ### Step 4 — Generate the Context Set
 
