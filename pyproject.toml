@@ -10,6 +10,7 @@ dependencies = [
     "langchain-openai==1.6.2",
     "langgraph-checkpoint-sqlite==3.1.1",
     "pydantic>=2.12,<3",
+    "textual==8.2.8",
 ]
 
 [project.optional-dependencies]
@@ -54,6 +55,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 markers = [
     "unit: Layer 1 deterministic tests (tools, compute_trend properties, routing edges)",
     "e2e: end-to-end golden-case runs (excluded from unit runs)",

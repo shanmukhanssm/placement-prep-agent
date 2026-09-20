@@ -291,7 +291,9 @@ python -m prep_agent          # start coaching — onboarding greets you first
 
 | Command | What it does |
 |---|---|
-| `python -m prep_agent` | chat with the coach (CLI REPL) |
+| `python -m prep_agent` | chat with the coach — Textual TUI (chat pane + live sidebar; ^Q quit · ^R report · ^M memory · ^L clear); resumes the last thread |
+| `python -m prep_agent --new` | start a fresh conversation thread (re-points the resume file) |
+| `python -m prep_agent --plain` | legacy print REPL (resumes / `--new` works the same) |
 | `python -m prep_agent reset-memory` | wipe memory (CLI-only by design) |
 | `pytest` · `ruff check src tests` · `mypy --strict src` | all gates, no network |
 | `python -m evals.run --layer all` | live 5-layer eval suite (needs `.env`) |

@@ -147,7 +147,7 @@ Rules: import everywhere; never redeclare. **Model strings and per-role temperat
 
 ## Dependencies (closed list)
 
-`langgraph`, `langchain-openai`, `langgraph-checkpoint-sqlite`, `pydantic`, `pytest`, `ruff`, `mypy`.
+`langgraph`, `langchain-openai`, `langgraph-checkpoint-sqlite`, `pydantic`, `textual` (TUI face — chat + sidebar), `pytest`, `ruff`, `mypy`.
 
 Nothing else without updating this list and `pyproject.toml` in the same commit.
 
