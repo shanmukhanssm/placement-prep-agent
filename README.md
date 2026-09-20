@@ -263,8 +263,8 @@ runs were **never re-rolled**: fix the code, re-run the gate.
 
 Robustness beyond the eval suite: a **146-turn, 4-persona adversarial stress-test**
 (normal · rude · chaotic · weird) ran the real state machine against a rate-limited
-LLM shim — zero user-visible crashes, all transport failures absorbed by retries.
-Reports live in [`stress-test/`](stress-test/README.md).
+LLM shim — zero user-visible crashes, all transport failures absorbed by retries,
+and the findings fed the post-4.2 fix cycle.
 
 ## 🛠️ How this agent was built — the workflow behind it
 
@@ -329,7 +329,7 @@ How that mapped onto this repo, commit by commit:
 | **2.x** Specialists | Owner-approved behavior contracts → real onboarding / comm / dsa / core subgraphs; provider seam verified live | each subgraph green in isolation |
 | **3** Main graph | Subgraphs wired, SQLite checkpointing, HTML report card | golden e2e green |
 | **4.1–4.2** Evals | 5-layer suite live; bugs found (B-1..B-8) fixed; **all 5 gates GREEN live** | [`evals/results/`](evals/results/README.md) |
-| **Stress** | 146-turn 4-persona adversarial run vs rate-limited shim | [`stress-test/`](stress-test/README.md) |
+| **Stress** | 146-turn 4-persona adversarial run vs rate-limited shim | zero crashes; findings fed fix cycles |
 | **Change 1-3** | Open core subject · 100-question DSA bank · cross-session memory | regression pins + gates re-run |
 | **Fix cycles** | Discussion intent, clarify escalation cap, coach persona, greet identity, narration humanization | 191 tests · ruff · mypy --strict clean |
 
@@ -373,7 +373,6 @@ placement-prep-agent/
 ├── evals/                       ← 5-layer eval suite + final GREEN gate evidence
 ├── tests/                       ← unit / subgraph / e2e — 191 hermetic tests
 ├── skills/                      ← 12 skill packages (2 governing + 10 stage)
-├── stress-test/                 ← adversarial persona stress-test reports
 ├── langgraph.json               ← `langgraph dev` (LangGraph Studio) entrypoint
 └── pyproject.toml               ← pinned deps · ruff · mypy --strict · pytest config
 ```
@@ -411,9 +410,10 @@ Presets for xKiro, Groq, and NVIDIA NIM are documented in
 
 ## 🤝 Contributing
 
-Bug reports and PRs are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
-setup, the gates your change must pass (191 tests, `ruff`, `mypy --strict`), and
-the commit message convention.
+Bug reports and PRs are welcome. The bar for every change: `pytest` (191 hermetic
+tests), `ruff check src tests`, and `mypy --strict src` — all green, no weakened
+assertions, red eval results never re-rolled. Conventional Commits style
+(`feat(dsa): …`, `fix(router): …`) keeps the history scannable.
 
 ## 📄 License
 
