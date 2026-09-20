@@ -264,6 +264,7 @@ procedure, let the ladder drive construction — this repo is the worked example
 ```
 placement-prep-agent/
 ├── AGENTS.md                    ← operating manual: pipeline, Build Ladder, gates
+├── context/                     ← project truth files: graph-design · registries · eval-plan · progress-tracker
 ├── src/prep_agent/              ← the agent (LangGraph)
 │   ├── graph.py                 ←   root graph — 12 nodes, 1 conditional edge
 │   ├── state.py                 ←   MainState + pydantic models
