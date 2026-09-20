@@ -112,8 +112,8 @@ class QuestionRecord(BaseModel):
     score: float                # comm/core: 0-10 · dsa: single record, optimality 0-100
 
 class SessionRecord(BaseModel):  # exactly what one completed session appends to history
-    record_id: str              # "{date}-{field}-{seq}" — idempotency key
-    date: str                   # ISO date
+    record_id: str              # "{date}-{field}-{seq}" — idempotency key (Harden H2: pattern ^[A-Za-z0-9_-]+$ + after-validator pinning it to {date}-{field}-{seq})
+    date: str                   # ISO date (Harden H2: pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ — filename-safe; traversal payloads die at the tool boundary as ToolError("invalid_record"))
     field: Literal["dsa", "communication", "core_subject"]
     topic: str
     score: float                # 0-100 normalized

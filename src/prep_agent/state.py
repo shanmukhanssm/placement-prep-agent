@@ -7,7 +7,7 @@ one writer per field per turn ⇒ no ``Annotated[..., operator.add]`` reducers a
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class Profile(BaseModel):
@@ -35,15 +35,33 @@ class QuestionRecord(BaseModel):
 
 
 class SessionRecord(BaseModel):
-    """Exactly what one completed session appends to history."""
+    """Exactly what one completed session appends to history.
 
-    record_id: str  # "{date}-{field}-{seq}" — idempotency key
-    date: str  # ISO date
+    H2 guardrail fix (context/guardrail-spec.md): ``date`` and ``record_id`` are
+    interpolated into the history filename ``{record.date}-{record.field}-{seq}.json``
+    (tools/report_card.py::save_session_results), so the identity fields are
+    constrained — a traversal payload (``date="../../etc"``) fails validation at the
+    tool boundary (ToolError("invalid_record")) instead of escaping ``data/``.
+    ``date`` is an ISO date, ``field`` a closed Literal, ``record_id`` a
+    filename-safe charset, and the after-validator pins record_id to exactly
+    ``{date}-{field}-{seq}`` so the idempotency key can never disagree with the
+    path template.
+    """
+
+    record_id: str = Field(pattern=r"^[A-Za-z0-9_-]+$")  # filename/id-safe charset
+    date: str = Field(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")  # ISO date — filename-safe
     field: Literal["dsa", "communication", "core_subject"]
     topic: str
     score: float  # 0-100 normalized
     duration_min: float
     questions: list[QuestionRecord]
+
+    @model_validator(mode="after")
+    def _record_id_is_date_field_seq(self) -> "SessionRecord":
+        prefix = f"{self.date}-{self.field}-"
+        if not self.record_id.startswith(prefix) or not self.record_id[len(prefix) :].isdigit():
+            raise ValueError("record_id must be '{date}-{field}-{seq}'")
+        return self
 
 
 class TrendVerdict(BaseModel):
