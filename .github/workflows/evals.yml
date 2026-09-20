@@ -1,0 +1,100 @@
+# Eval CI wiring (build-plan.md H3) — gate discipline per
+# skills/agent-eval-builder/references/ci-gates.md and context/eval-plan.md.
+#
+# Flaky-eval policy (encoded — not negotiable):
+#   * The ONLY retry in this pipeline is the runner's borderline-rerun-once
+#     (evals/run.py): a borderline L2/L3 result triggers exactly one rerun; the
+#     second result stands and is recorded as a caveat in the saved results
+#     table. No job-level retries, no re-run-until-green, no bypass flags — a
+#     red gate is never silently re-rolled ("the gate you ignore today is the
+#     gate that has no teeth tomorrow"). A red deterministic layer is a bug:
+#     fix it, never re-roll to green.
+#   * Provider-side faults (rate limit, 5xx) invalidate the affected case
+#     rather than failing the gate; evals/harness.py backs off, reruns once,
+#     and records both attempts.
+#
+# Layer model (context/eval-plan.md): L1 = deterministic pytest (hermetic, no
+# secrets). L2-L5 need a live LLM provider — LLM_API_KEY / LLM_BASE_URL /
+# LLM_MODEL repo secrets (all optional). The guard below falls back to L1 when
+# live layers are requested without a key, so pushes stay green without secrets;
+# the nightly/dispatch full suite ("all", incl. L5 golden cases x3) runs where a
+# key exists.
+
+name: evals
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      layers:
+        description: "Comma-separated eval layers (1-5, e.g. '1,2') or 'all'"
+        required: false
+        default: "1,2"
+  schedule:
+    - cron: "30 2 * * *"  # nightly UTC — full suite ('all')
+
+permissions:
+  contents: read
+
+jobs:
+  # Fast deterministic core — seconds, no secrets needed; BLOCKS (ci-gates).
+  fast-checks:
+    name: ruff + mypy + pytest (deterministic core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project + dev tools
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check .
+      - name: Mypy (strict, src only)
+        run: mypy --strict src
+      - name: Pytest
+        run: pytest -q
+
+  # Eval gates — layer selection per trigger; live layers guarded on LLM_API_KEY.
+  eval-gates:
+    name: eval layers
+    needs: fast-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project + dev tools
+        run: pip install -e ".[dev]"
+      - name: Select layers for this trigger
+        id: select
+        run: |
+          case "${{ github.event_name }}" in
+            push)     echo "layers=1,2" >> "$GITHUB_OUTPUT" ;;   # unit + intent gate
+            schedule) echo "layers=all" >> "$GITHUB_OUTPUT" ;;   # nightly: full suite
+            *)        echo "layers=${{ inputs.layers }}" >> "$GITHUB_OUTPUT" ;;  # dispatch
+          esac
+      - name: Run eval layers (live layers guarded on LLM_API_KEY)
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: |
+          LAYERS="${{ steps.select.outputs.layers }}"
+          # Guard: live layers (2-5 / all) without a key would only burn red runs.
+          # Fall back to L1 (hermetic) so pushes stay green without secrets —
+          # L1 always runs; the notice keeps the skip loud, never silent.
+          if [ -z "$LLM_API_KEY" ] && [ "$LAYERS" != "1" ]; then
+            echo "::notice::LLM_API_KEY secret not set — live eval layers skipped; add the repo secret to enable"
+            LAYERS="1"
+          fi
+          python -m evals.run --layer "$LAYERS"
+      - name: Upload eval results table as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: evals/results/
+          if-no-files-found: warn

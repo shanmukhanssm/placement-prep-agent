@@ -1,4 +1,7 @@
-"""evals.run — the eval-plan.md runner: `python -m evals.run --layer <n>` (n = 1-5, or all).
+"""evals.run — the eval-plan.md runner: `python -m evals.run --layer <layers>`.
+
+`--layer` takes one layer (1-5), a comma-separated list (e.g. `1,2` — one run,
+one results table, one exit code), or `all` for the full suite.
 
 Prints a results table and saves it (JSON + markdown) under `evals/results/`.
 Exit code 0 = every requested layer green; 1 = a red/invalid gate (STOP the
@@ -13,7 +16,30 @@ from __future__ import annotations
 import argparse
 import sys
 
-LAYER_CHOICES = ("1", "2", "3", "4", "5", "all")
+LAYER_CHOICES = ("1", "2", "3", "4", "5")
+
+
+def _parse_layers(parser: argparse.ArgumentParser, value: str) -> list[int]:
+    """`--layer` value → ordered layer numbers; `all` = 1-5.
+
+    Per-token validation: every comma-separated token must be 1-5; anything else
+    (including duplicates) is an argparse error (exit 2).
+    """
+    if value == "all":
+        return [1, 2, 3, 4, 5]
+    layers: list[int] = []
+    for token in value.split(","):
+        token = token.strip()
+        if token not in LAYER_CHOICES:
+            parser.error(
+                f"argument --layer: invalid choice: '{token}' "
+                "(choose from 1-5, a comma-separated list like '1,2', or 'all')"
+            )
+        number = int(token)
+        if number in layers:
+            parser.error(f"argument --layer: duplicate layer: '{token}'")
+        layers.append(number)
+    return layers
 
 
 def _borderline(result) -> bool:
@@ -36,8 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--layer",
         required=True,
-        choices=LAYER_CHOICES,
-        help="eval layer to run (1-5), or 'all' for the full suite",
+        help="eval layer to run: 1-5, a comma-separated list (e.g. '1,2'), or 'all'",
     )
     args = parser.parse_args(argv)
 
@@ -46,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
 
     load_env()
 
-    layer_numbers = [1, 2, 3, 4, 5] if args.layer == "all" else [int(args.layer)]
+    layer_numbers = _parse_layers(parser, args.layer)
     modules = {
         1: "evals.layer1",
         2: "evals.layer2",
