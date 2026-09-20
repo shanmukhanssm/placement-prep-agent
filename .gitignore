@@ -19,6 +19,9 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# langgraph studio / dev server
+.langgraph_api/
+
 # editors
 .idea/
 .vscode/
