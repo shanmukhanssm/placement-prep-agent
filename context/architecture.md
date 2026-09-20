@@ -152,6 +152,24 @@ Changing provider = env change only: any OpenAI-compatible `base_url` works. No 
 
 ---
 
+## Degraded-Mode Rungs (Harden H1)
+
+Per capability, the pre-decided ladder when a dependency fails — each rung verified by a test in `tests/reliability/test_degradation_audit.py` (the audit table there is the authoritative row-by-row record). This agent is turn-based: every rung degrades THIS turn and the user simply answers again; nothing is lost because un-collected answers live in checkpointed state.
+
+| Capability | Rung 0 (normal) | Rung 1 (degraded) | Rung 2 (floor) | Trigger / recovery |
+| --- | --- | --- | --- | --- |
+| Intent routing | LLM classify (`router_classify`) | after 1 validation retry fails → `intent="smalltalk"` → clarify asks a short question | turn still completes (never crashes) | any structured-call failure; auto-recovers next turn (stateless classify) |
+| Greetings / progress narration | LLM narrates precomputed `trend_summary` numbers | templated greeting built in CODE from the same numbers (number-integrity holds in both rungs) | — | empty/failed LLM output (`message_text` → ""); auto-recovers next turn |
+| Onboarding collection | LLM collector extracts + phrases each step | extraction failure → re-ask same field | tool write failure → apologize + keep collected answers in checkpointed state, ask user to continue | retry = user's next message; nothing re-collected |
+| DSA evaluation | LLM judge 3-pass protocol | after 1 retry → conservative verdict `optimality_pct=0`, feedback "explain it differently"; loop stays bounded (2 non-attempts → give-up fork; 3 attempts → wrap) | save failure → honest message, session ends without a record | deterministic fallbacks; auto-recovers next session |
+| Comm/core judging | LLM judge per answer | after 1 retry → `score=0.0`, verdict "Un-scored — judge error; excluded from the average"; the wrap mean EXCLUDES it | ALL answers un-scored → no record written (§7.8 honesty) | per-answer isolation — one bad judge call never poisons the session |
+| LLM statement/question phrasing (DSA selector) | bank statement verbatim (NO LLM call since Change-2) | — structurally cannot degrade — | — | n/a |
+| Process death | SQLite-checkpointed turn state | CLI restart reopens the SAME thread (`data/cli-thread.txt` → same `thread_id`); `session_active` pin continues the specialist session | `--new` mints a fresh thread by choice | kill -9 mid-session verified by `tests/reliability/test_kill_resume.py` (real SIGKILL, two processes) |
+
+Honesty clause (all rungs): degraded paths say what happened in student-visible words ("couldn't save — say 'continue'", "Un-scored — judge error") and never bluff scores, trends, or memory. No silent degradation anywhere on the path.
+
+---
+
 ## Invariants
 
 Rules the implementation must never violate:
