@@ -1,9 +1,0 @@
-{"case": "G1", "run": 1, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G1", "run": 2, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G1", "run": 3, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G3", "run": 1, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G3", "run": 2, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G3", "run": 3, "passed": true, "detail": "all properties green", "note": "", "driver_notes": []}
-{"case": "G2", "run": 1, "passed": false, "detail": "narration invented numerals ['0', '01', '1', '2', '221325', '3.5', '366', '442', '49', '55', '552', '578', '69', '7', '7001', '710', '75', '76', '773154', '9', '9175']", "note": "deterministic red — a bug, never re-rolled (eval-plan)", "driver_notes": []}
-{"case": "G2", "run": 2, "passed": false, "detail": "narration invented numerals ['0', '01', '2', '221325', '3.5', '366', '4', '442', '49', '5', '55', '552', '579', '6', '7', '710', '75', '76', '7660', '8', '9', '93']", "note": "deterministic red — a bug, never re-rolled (eval-plan)", "driver_notes": []}
-{"case": "G2", "run": 3, "passed": false, "detail": "narration invented numerals ['0', '01', '2', '221325', '255', '3.5', '366', '442', '49', '54', '55', '552', '579', '58', '7', '70', '710', '75', '76', '78', '9', '9828']", "note": "deterministic red — a bug, never re-rolled (eval-plan)", "driver_notes": []}
