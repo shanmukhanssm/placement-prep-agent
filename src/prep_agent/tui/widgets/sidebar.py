@@ -40,7 +40,7 @@ FIELD_LABELS: Final[dict[str, str]] = {
     "communication": "comm",
     "core_subject": "core",
 }
-ONBOARDING_FIELD_ORDER: Final[tuple[str, str, ...]] = (
+ONBOARDING_FIELD_ORDER: Final[tuple[tuple[str, str], ...]] = (
     ("name", "name"),
     ("degree_branch", "degree"),
     ("grad_year", "grad year"),
@@ -249,7 +249,9 @@ class Sidebar(VerticalScroll):
         verdicts: dict[str, str] = {}
         for field, entry in _as_dict(card.fields).items():
             data = _as_dict(entry)
-            values = [v for v in (_as_float(s) for s in data.get("scores", [])) if v is not None]
+            raw_scores = data.get("scores", [])
+            score_items = cast("list[object]", raw_scores) if isinstance(raw_scores, list) else []
+            values = [v for v in (_as_float(s) for s in score_items) if v is not None]
             scores[field] = values
             trend = data.get("trend")
             verdicts[field] = _verdict_str(trend)
